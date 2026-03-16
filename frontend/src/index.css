@@ -1,0 +1,52 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-navy-950 text-gray-100 font-sans antialiased selection:bg-primary-500/30 selection:text-primary-200;
+  }
+  
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif tracking-tight text-white;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary-500 hover:bg-primary-600 text-navy-950 font-medium py-2 px-4 rounded-lg transition-all duration-200 active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .btn-outline {
+    @apply border border-primary-500/30 hover:border-primary-500 text-primary-400 hover:text-primary-300 hover:bg-primary-500/10 font-medium py-2 px-4 rounded-lg transition-all duration-200 active:scale-95 flex items-center justify-center gap-2;
+  }
+
+  .input-field {
+    @apply bg-navy-900 border border-gray-800 focus:border-primary-500/50 focus:ring-1 focus:ring-primary-500/50 rounded-lg px-4 py-2.5 text-white placeholder-gray-500 transition-colors w-full outline-none;
+  }
+
+  .glass-card {
+    @apply bg-navy-900/40 backdrop-blur-md border border-white/5 rounded-2xl;
+  }
+  
+  .nav-link {
+    @apply text-gray-300 hover:text-white transition-colors text-sm font-medium tracking-wide;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: #050c18;
+}
+::-webkit-scrollbar-thumb {
+  background: #1f2937;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #374151;
+}
