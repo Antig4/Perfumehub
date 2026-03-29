@@ -16,16 +16,19 @@ export default function AddEditProduct() {
   
   const [formData, setFormData] = useState({
     name: '', brand_id: '', category_id: '', description: '',
-    scent_notes: '', volume_ml: '', price: '', stock: '', is_active: 1
+    scent_notes: '', volume_ml: '', price: '', stock: '', is_active: 1,
+    gender: 'unisex'
   });
 
   useEffect(() => {
-    // Load dependencies first
+    // Load dependencies first. API responses sometimes wrap arrays in { data: [...] }
     Promise.all([api.get('/brands'), api.get('/categories')]).then(([bRes, cRes]) => {
-      setBrands(bRes.data);
-      setCategories(cRes.data);
-      if (bRes.data.length > 0 && !formData.brand_id) setFormData(p => ({...p, brand_id: bRes.data[0].id}));
-      if (cRes.data.length > 0 && !formData.category_id) setFormData(p => ({...p, category_id: cRes.data[0].id}));
+      const brandData = (bRes.data && bRes.data.data) ? bRes.data.data : (Array.isArray(bRes.data) ? bRes.data : []);
+      const categoryData = (cRes.data && cRes.data.data) ? cRes.data.data : (Array.isArray(cRes.data) ? cRes.data : []);
+      setBrands(brandData);
+      setCategories(categoryData);
+      if (brandData.length > 0 && !formData.brand_id) setFormData(p => ({...p, brand_id: brandData[0].id}));
+      if (categoryData.length > 0 && !formData.category_id) setFormData(p => ({...p, category_id: categoryData[0].id}));
     }).catch(() => toast.error('Failed to load categories'));
 
     if (isEditing) {
@@ -37,10 +40,11 @@ export default function AddEditProduct() {
           category_id: prod.category?.id || '',
           description: prod.description,
           scent_notes: prod.scent_notes || '',
-          volume_ml: prod.volume_ml,
+            volume_ml: prod.volume_ml,
           price: prod.price,
           stock: prod.stock,
-          is_active: prod.is_active ? 1 : 0
+            is_active: prod.is_active ? 1 : 0,
+            gender: prod.gender || 'unisex'
         });
       }).catch(() => {
         toast.error('Product not found');
@@ -62,7 +66,14 @@ export default function AddEditProduct() {
       }
       navigate('/seller/products');
     } catch (e) {
-      toast.error(e.response?.data?.message || 'Error saving product');
+      // Show validation errors from Laravel (422) if present
+      const resp = e.response?.data;
+      if (resp?.errors) {
+        // resp.errors is an object with arrays of messages
+        Object.values(resp.errors).flat().forEach(msg => toast.error(msg));
+      } else {
+        toast.error(resp?.message || 'Error saving product');
+      }
     } finally {
       setLoading(false);
     }
@@ -98,6 +109,15 @@ export default function AddEditProduct() {
             <select required className="input-field" value={formData.category_id} onChange={e => setFormData({...formData, category_id: e.target.value})}>
               <option value="">Select Category</option>
               {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-1">Gender</label>
+            <select required className="input-field" value={formData.gender} onChange={e => setFormData({...formData, gender: e.target.value})}>
+              <option value="unisex">Unisex</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
             </select>
           </div>
 

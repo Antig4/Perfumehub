@@ -47,7 +47,12 @@ class DeliveryController extends Controller
             'type'    => 'delivery_assigned',
             'title'   => 'New Delivery Assigned',
             'message' => "Order #{$delivery->order->order_number} has been assigned to you.",
-            'data'    => ['delivery_id' => $delivery->id],
+            'data'    => [
+                'delivery_id' => $delivery->id,
+                'order_id'    => $delivery->order_id,
+                'items'       => $delivery->order->items->map->only(['id','product_id','product_name','quantity'])->values(),
+                'delivery_status' => $delivery->status,
+            ],
         ]);
 
         return response()->json(['message' => 'Rider assigned.', 'data' => $delivery]);
@@ -56,7 +61,23 @@ class DeliveryController extends Controller
     // Rider: update delivery status
     public function updateStatus(Request $request, Delivery $delivery)
     {
-        if ($delivery->rider_id !== $request->user()->id && !$request->user()->isAdmin()) {
+        $user = $request->user();
+
+        // If delivery is unassigned and the rider is trying to pick it up, allow them to claim it
+        if ($delivery->rider_id === null && $request->status === 'picked_up') {
+            // Assign to the current rider
+            $delivery->update([
+                'rider_id'    => $user->id,
+                'status'      => 'assigned',
+                'assigned_at' => now(),
+            ]);
+
+            // mark rider unavailable
+            $riderProfile = $user->riderProfile;
+            if ($riderProfile) { $riderProfile->update(['is_available' => false]); }
+        }
+
+        if ($delivery->rider_id !== $user->id && !$user->isAdmin()) {
             return response()->json(['message' => 'Unauthorized.'], 403);
         }
 
@@ -93,7 +114,31 @@ class DeliveryController extends Controller
 
         if ($request->status === 'delivered') {
             $riderProfile = $request->user()->riderProfile;
-            if ($riderProfile) { $riderProfile->increment('total_deliveries'); }
+            if ($riderProfile) {
+                $riderProfile->increment('total_deliveries');
+                $riderProfile->update(['is_available' => true]);
+            }
+            // Update any existing delivery_assigned notifications for this delivery
+            try {
+                $notes = Notification::where('type', 'delivery_assigned')
+                    ->where('data->delivery_id', $delivery->id)
+                    ->get();
+                foreach ($notes as $note) {
+                    $d = $note->data ?? [];
+                    $d['delivery_status'] = 'delivered';
+                    $note->data = $d;
+                    $note->save();
+                }
+            } catch (\Exception $e) {
+                // ignore notification update errors
+            }
+            
+        }
+
+        // If delivery failed, also mark rider available again so they can be reassigned
+        if ($request->status === 'failed') {
+            $riderProfile = $request->user()->riderProfile;
+            if ($riderProfile) { $riderProfile->update(['is_available' => true]); }
         }
 
         return response()->json(['message' => 'Delivery status updated.', 'data' => $delivery]);

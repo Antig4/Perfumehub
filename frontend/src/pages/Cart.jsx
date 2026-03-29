@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { ArrowLeft } from 'lucide-react';
 import api from '../api/axios';
 import { Trash2, ShoppingBag, ArrowRight } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -68,7 +69,12 @@ export default function Cart() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <h1 className="text-3xl font-serif text-white mb-8">Shopping Cart</h1>
+      <div className="flex items-center gap-3 mb-8">
+        <button onClick={() => navigate(-1)} className="text-gray-400 hover:text-white flex items-center gap-2">
+          <ArrowLeft className="w-4 h-4" /> Back
+        </button>
+        <h1 className="text-3xl font-serif text-white">Shopping Cart</h1>
+      </div>
       
       <div className="flex flex-col lg:flex-row gap-8">
         {/* Cart Items */}

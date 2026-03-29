@@ -7,6 +7,8 @@ use App\Models\User;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\SellerProfile;
+use App\Models\Brand;
+use App\Models\Category;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -37,8 +39,27 @@ class AdminDashboardController extends Controller
         $userGrowth = User::select(DB::raw("DATE_FORMAT(created_at, '%Y-%m') as month"), DB::raw('COUNT(*) as count'))
             ->where('created_at', '>=', now()->subMonths(6))->groupBy('month')->orderBy('month')->get();
 
+        // Normalize and return in snake_case under `data` to match frontend expectations
+        $stats = [
+            'total_users' => $totalUsers,
+            'total_sellers' => $totalSellers,
+            'total_customers' => $totalCustomers,
+            'total_riders' => $totalRiders,
+            'total_orders' => $totalOrders,
+            'total_revenue' => $totalRevenue ?: 0,
+            'pending_orders' => $pendingOrders,
+            'pending_sellers' => $pendingSellers,
+            // optional growth metrics (computed elsewhere) — default to null to avoid NaN in frontend
+            'sales_growth' => null,
+            'order_growth' => null,
+            // recent sellers for the admin overview panel
+            'recent_sellers' => SellerProfile::with('user')->orderByDesc('created_at')->take(5)->get(),
+            'total_brands' => Brand::count(),
+            'total_categories' => Category::count(),
+        ];
+
         return response()->json([
-            'stats' => compact('totalUsers','totalSellers','totalCustomers','totalRiders','totalOrders','totalRevenue','pendingOrders','pendingSellers'),
+            'data' => $stats,
             'monthly_sales' => $monthlySales,
             'top_products'  => $topProducts,
             'top_sellers'   => $topSellers,

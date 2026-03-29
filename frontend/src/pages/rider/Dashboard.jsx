@@ -13,8 +13,9 @@ export default function RiderDashboard() {
 
   const fetchStats = async () => {
     try {
-      const { data } = await api.get('/rider/dashboard');
-      setStats(data);
+  const res = await api.get('/rider/dashboard');
+  const payload = res.data && res.data.data ? res.data.data : res.data;
+  setStats(payload || {});
     } catch (e) {
       toast.error('Failed to load dashboard data');
     } finally {
@@ -67,7 +68,7 @@ export default function RiderDashboard() {
           <h2 className="text-xl font-serif text-white">Recent Activity Tracker</h2>
         </div>
         <div className="space-y-6">
-          {stats.recent_activity.map(delivery => (
+          {(stats.recent_activity || []).map(delivery => (
             <div key={delivery.id} className="flex gap-4 p-4 bg-navy-950/50 rounded-lg">
               <div className="flex flex-col items-center">
                  <div className="w-10 h-10 rounded-full bg-navy-900 flex items-center justify-center shrink-0">
@@ -88,7 +89,7 @@ export default function RiderDashboard() {
               </div>
             </div>
           ))}
-          {stats.recent_activity.length === 0 && <p className="text-center text-gray-500 py-8">No recent delivery activity.</p>}
+          {(stats.recent_activity || []).length === 0 && <p className="text-center text-gray-500 py-8">No recent delivery activity.</p>}
         </div>
       </div>
     </div>

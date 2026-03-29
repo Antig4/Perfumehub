@@ -36,6 +36,15 @@
   }
 }
 
+/* Keep icons inside outline buttons visually stable on hover */
+.btn-outline svg {
+  transition: transform 150ms ease-in-out, opacity 150ms ease-in-out;
+}
+.btn-outline:hover svg,
+.btn-outline:focus svg {
+  transform: none !important;
+}
+
 /* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 8px;

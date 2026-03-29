@@ -15,9 +15,16 @@ export default function Login() {
     setLoading(true);
     try {
       const { data } = await api.post('/login', formData);
-      setAuth(data.user, data.token);
+      // backend returns access_token (Sanctum/Personal Access Token)
+      const token = data.access_token || data.token || (data?.token_type && data?.token) ? data.token : null;
+      setAuth(data.user, token || data.access_token);
       toast.success('Welcome back!');
-      navigate('/');
+      // redirect based on role
+      const role = data.user?.role || data?.role || (data.user && data.user.role);
+      if (role === 'seller') navigate('/seller/dashboard');
+      else if (role === 'rider') navigate('/rider/dashboard');
+      else if (role === 'admin') navigate('/admin/dashboard');
+      else navigate('/catalog');
     } catch (e) {
       toast.error(e.response?.data?.message || 'Login failed');
     } finally {

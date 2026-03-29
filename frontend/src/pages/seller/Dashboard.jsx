@@ -11,8 +11,28 @@ export default function SellerDashboard() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const { data } = await api.get('/seller/dashboard');
-        setStats(data);
+    const res = await api.get('/seller/dashboard');
+    // backend may return { stats: {...}, top_products: [...] } or wrap under data
+  const payload = res.data && res.data.data ? res.data.data : res.data || {};
+
+    // normalize stats and provide safe defaults
+    const rawStats = payload.stats || {};
+    const topProducts = Array.isArray(payload.top_products) ? payload.top_products : [];
+    const monthlySales = Array.isArray(payload.monthly_sales) ? payload.monthly_sales : [];
+    const recentOrders = Array.isArray(payload.recent_orders) ? payload.recent_orders : [];
+
+    const normalized = {
+      total_revenue: Number(rawStats.total_revenue || 0),
+      total_products: rawStats.total_products || 0,
+      total_orders: rawStats.total_orders || 0,
+      low_stock_count: rawStats.low_stock_count || 0,
+      // fallback: sum of sales_count from topProducts (approx) if server doesn't provide total_items_sold
+      total_items_sold: rawStats.total_items_sold ?? topProducts.reduce((s, p) => s + (Number(p.sales_count) || 0), 0),
+      top_products: topProducts,
+      monthly_sales: monthlySales,
+      recent_orders: recentOrders,
+    };
+    setStats(normalized);
       } catch (e) {
         toast.error('Failed to load dashboard data');
       } finally {
@@ -38,7 +58,7 @@ export default function SellerDashboard() {
             <h3 className="text-gray-400 font-medium">Total Revenue</h3>
             <div className="bg-primary-500/20 p-2 rounded-lg"><DollarSign className="w-6 h-6 text-primary-400" /></div>
           </div>
-          <p className="text-3xl font-bold text-white">₱{Number(stats.total_revenue).toLocaleString()}</p>
+          <p className="text-3xl font-bold text-white">₱{Number(stats.total_revenue || 0).toLocaleString()}</p>
         </div>
         
         <div className="glass-card p-6 flex flex-col justify-between">
@@ -46,7 +66,7 @@ export default function SellerDashboard() {
             <h3 className="text-gray-400 font-medium">Active Products</h3>
             <div className="bg-blue-500/20 p-2 rounded-lg"><Package className="w-6 h-6 text-blue-400" /></div>
           </div>
-          <p className="text-3xl font-bold text-white">{stats.total_products}</p>
+          <p className="text-3xl font-bold text-white">{stats.total_products || 0}</p>
         </div>
 
         <div className="glass-card p-6 flex flex-col justify-between">
@@ -54,7 +74,7 @@ export default function SellerDashboard() {
             <h3 className="text-gray-400 font-medium">Total Orders</h3>
             <div className="bg-green-500/20 p-2 rounded-lg"><ShoppingBag className="w-6 h-6 text-green-400" /></div>
           </div>
-          <p className="text-3xl font-bold text-white">{stats.total_orders}</p>
+          <p className="text-3xl font-bold text-white">{stats.total_orders || 0}</p>
         </div>
 
         <div className="glass-card p-6 flex flex-col justify-between">
@@ -62,7 +82,7 @@ export default function SellerDashboard() {
             <h3 className="text-gray-400 font-medium">Items Sold</h3>
             <div className="bg-yellow-500/20 p-2 rounded-lg"><TrendingUp className="w-6 h-6 text-yellow-400" /></div>
           </div>
-          <p className="text-3xl font-bold text-white">{stats.total_items_sold}</p>
+          <p className="text-3xl font-bold text-white">{stats.total_items_sold || stats.total_items_sold === 0 ? stats.total_items_sold : stats.total_items_sold}</p>
         </div>
       </div>
 
@@ -74,7 +94,7 @@ export default function SellerDashboard() {
             <Link to="/seller/products" className="text-primary-400 hover:text-white text-sm">View All</Link>
           </div>
           <div className="space-y-4">
-            {stats.top_products.map((product, i) => (
+            {(stats.top_products || []).map((product, i) => (
               <div key={product.id} className="flex items-center justify-between p-3 bg-navy-950/50 rounded-lg border border-white/5">
                 <div className="flex items-center gap-4">
                   <span className="text-gray-500 font-bold w-4">{i + 1}</span>
@@ -86,7 +106,7 @@ export default function SellerDashboard() {
                 <p className="text-primary-400 font-bold">₱{Number(product.price).toLocaleString()}</p>
               </div>
             ))}
-            {stats.top_products.length === 0 && <p className="text-gray-500 text-center py-4">No sales data yet.</p>}
+            {(stats.top_products || []).length === 0 && <p className="text-gray-500 text-center py-4">No sales data yet.</p>}
           </div>
         </div>
 

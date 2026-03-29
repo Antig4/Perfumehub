@@ -34,17 +34,29 @@ Route::get('/products/{product}/reviews', [ReviewController::class, 'productRevi
 // PayMongo webhook (public, verified by signature)
 Route::post('/payment/webhook', [PaymentController::class, 'webhook']);
 
+// Server-Sent Events stream for seller order updates (token-authenticated)
+Route::get('/seller/orders/stream', [OrderController::class, 'streamSellerOrders']);
+
 // ─── Authenticated Routes ──────────────────────────────────────
 Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me',      [AuthController::class, 'me']);
 
+    // Minimal order status endpoint accessible to authenticated users with
+    // role-specific authorization (customer owner, seller with items, rider assigned).
+    Route::get('/orders/{order}/status', [OrderController::class, 'status']);
+
     // Profile
     Route::get('/profile',             [UserController::class, 'profile']);
     Route::put('/profile',             [UserController::class, 'updateProfile']);
     Route::post('/profile/avatar',     [UserController::class, 'updateAvatar']);
     Route::put('/profile/password',    [UserController::class, 'changePassword']);
+
+    // Notifications
+    Route::get('/notifications', [\App\Http\Controllers\Api\NotificationController::class, 'index']);
+    Route::put('/notifications/{notification}/read', [\App\Http\Controllers\Api\NotificationController::class, 'markRead']);
+    Route::put('/notifications/mark-all-read', [\App\Http\Controllers\Api\NotificationController::class, 'markAllRead']);
 
     // ─── Customer ───────────────────────────────────────────────
     Route::middleware('role:customer')->group(function () {

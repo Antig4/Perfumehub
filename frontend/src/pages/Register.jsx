@@ -14,8 +14,9 @@ export default function Register() {
     e.preventDefault();
     setLoading(true);
     try {
-      const { data } = await api.post('/register', formData);
-      setAuth(data.user, data.token);
+  const { data } = await api.post('/register', formData);
+  const token = data.access_token || data.token || null;
+  setAuth(data.user, token);
       toast.success('Account created successfully!');
       navigate('/');
     } catch (e) {

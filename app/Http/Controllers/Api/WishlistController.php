@@ -11,6 +11,11 @@ class WishlistController extends Controller
 {
     public function index(Request $request)
     {
+        // only customers may view wishlist
+        if ($request->user()->role !== 'customer') {
+            return response()->json(['message' => 'Forbidden.'], 403);
+        }
+
         $wishlist = Wishlist::with(['product.primaryImage', 'product.brand'])
             ->where('user_id', $request->user()->id)
             ->get();
@@ -21,6 +26,11 @@ class WishlistController extends Controller
     public function toggle(Request $request)
     {
         $request->validate(['product_id' => 'required|exists:products,id']);
+
+        // only customers may toggle wishlist
+        if ($request->user()->role !== 'customer') {
+            return response()->json(['message' => 'Forbidden.'], 403);
+        }
 
         $existing = Wishlist::where('user_id', $request->user()->id)
             ->where('product_id', $request->product_id)

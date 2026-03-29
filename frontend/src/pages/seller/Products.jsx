@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import api from '../../api/axios';
 import { Plus, Edit2, Trash2, Tag, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { useAuthStore } from '../../stores/authStore';
 
 export default function SellerProducts() {
   const [products, setProducts] = useState([]);
@@ -15,8 +16,17 @@ export default function SellerProducts() {
 
   const fetchProducts = async () => {
     try {
-      const { data } = await api.get(`/products?search=${search}`);
-      setProducts(data.data); // Sanctum pagination wrapper
+      // If logged-in user is a seller, only fetch their products
+      const user = useAuthStore.getState().user;
+      const params = new URLSearchParams();
+      if (search) params.append('search', search);
+      if (user && user.role === 'seller') params.append('seller_id', user.id);
+      // increase per_page so sellers see more products on one page
+      params.append('per_page', '50');
+
+      const res = await api.get(`/products?${params.toString()}`);
+      // response is paginated; res.data.data contains items
+      setProducts(res.data.data || []);
     } catch (e) {
       toast.error('Failed to load products');
     } finally {

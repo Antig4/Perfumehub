@@ -17,9 +17,9 @@ export default function Footer() {
               Your ultimate destination for authentic, luxury, and designer fragrances. Discover the scent that defines you.
             </p>
             <div className="flex gap-4 pt-2">
-              <a href="#" className="hover:text-primary-400 transition-colors"><Facebook className="w-5 h-5" /></a>
+              <a href="https://www.facebook.com/echoyabrea" className="hover:text-primary-400 transition-colors"><Facebook className="w-5 h-5" /></a>
               <a href="#" className="hover:text-primary-400 transition-colors"><Twitter className="w-5 h-5" /></a>
-              <a href="#" className="hover:text-primary-400 transition-colors"><Instagram className="w-5 h-5" /></a>
+              <a href="https://www.instagram.com/krk_jndr/" className="hover:text-primary-400 transition-colors"><Instagram className="w-5 h-5" /></a>
             </div>
           </div>
 
@@ -48,15 +48,15 @@ export default function Footer() {
             <ul className="space-y-4 text-sm">
               <li className="flex gap-3">
                 <MapPin className="w-5 h-5 text-primary-500 shrink-0" />
-                <span>123 Ayala Avenue, Makati City, Metro Manila</span>
+                <span>Maon, Butuan City, Agusan Del Norte</span>
               </li>
               <li className="flex gap-3">
                 <Phone className="w-5 h-5 text-primary-500 shrink-0" />
-                <span>+63 2 8123 4567</span>
+                <span>+63 9 851 878 902</span>
               </li>
               <li className="flex gap-3">
                 <Mail className="w-5 h-5 text-primary-500 shrink-0" />
-                <span>support@perfumehub.com</span>
+                <span>perfumehub@gmail.com</span>
               </li>
             </ul>
           </div>

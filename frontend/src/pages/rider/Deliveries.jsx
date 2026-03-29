@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
 import api from '../../api/axios';
 import { MapPin, Phone, Truck, CheckCircle2, RotateCcw } from 'lucide-react';
+import MapViewer from '../../components/MapViewer';
 import toast from 'react-hot-toast';
+import Modal from '../../components/Modal';
+import LoadingSpinner from '../../components/LoadingSpinner';
 
 export default function Deliveries() {
   const [deliveries, setDeliveries] = useState([]);
@@ -13,7 +16,7 @@ export default function Deliveries() {
 
   const fetchDeliveries = async () => {
     try {
-      const { data } = await api.get('/deliveries');
+      const { data } = await api.get('/rider/deliveries');
       setDeliveries(data.data); // Sanctum pagination
     } catch (e) {
       toast.error('Failed to load deliveries');
@@ -22,13 +25,25 @@ export default function Deliveries() {
     }
   };
 
+  const [updating, setUpdating] = useState({});
+  const [confirmModal, setConfirmModal] = useState({ open: false, id: null, status: null });
+  const [viewer, setViewer] = useState({ open: false, delivery: null });
+
+  const requestUpdate = (id, status) => setConfirmModal({ open: true, id, status });
+
   const updateStatus = async (id, status) => {
     try {
-      await api.put(`/deliveries/${id}/status`, { status });
+      setUpdating((s) => ({ ...s, [id]: true }));
+      await api.put(`/rider/deliveries/${id}/status`, { status });
       toast.success('Delivery status updated');
-      fetchDeliveries();
+      await fetchDeliveries();
     } catch (e) {
-      toast.error('Failed to update status');
+      console.error('Update delivery status error', e);
+      const msg = e?.response?.data?.message || e?.message || 'Failed to update status';
+      toast.error(msg);
+    } finally {
+      setUpdating((s) => ({ ...s, [id]: false }));
+      setConfirmModal({ open: false, id: null, status: null });
     }
   };
 
@@ -56,7 +71,7 @@ export default function Deliveries() {
                 <div className="flex justify-between items-start mb-2">
                   <span className={`text-xs px-2 py-1 rounded font-bold uppercase flex items-center gap-1 ${
                     delivery.status === 'delivered' ? 'bg-green-500/20 text-green-400' :
-                    delivery.status === 'in_transit' ? 'bg-blue-500/20 text-blue-400' :
+                    delivery.status === 'out_for_delivery' || delivery.status === 'picked_up' ? 'bg-blue-500/20 text-blue-400' :
                     'bg-yellow-500/20 text-yellow-400'
                   }`}>
                     {delivery.status.replace(/_/g, ' ')}
@@ -71,7 +86,13 @@ export default function Deliveries() {
                   <h4 className="text-xs font-semibold text-primary-400 uppercase tracking-wider mb-2">Customer</h4>
                   <p className="font-medium text-white">{delivery.order?.user?.name}</p>
                   <p className="text-sm text-gray-400 flex items-center gap-2 mt-1">
-                    <Phone className="w-3 h-3" /> {delivery.order?.user?.phone || 'No phone'}
+                    <Phone className="w-3 h-3" />
+                    {(delivery.recipient_phone || delivery.order?.user?.phone) ? (
+                      <>
+                        <a className="hover:underline" href={`tel:${delivery.recipient_phone || delivery.order.user.phone}`}>{delivery.recipient_phone || delivery.order.user.phone}</a>
+                        <button onClick={() => { navigator.clipboard?.writeText(delivery.recipient_phone || delivery.order.user.phone); toast.success('Phone copied'); }} className="ml-2 text-xs text-gray-400 hover:text-white">Copy</button>
+                      </>
+                    ) : 'No phone'}
                   </p>
                 </div>
 
@@ -79,36 +100,52 @@ export default function Deliveries() {
                   <h4 className="text-xs font-semibold text-primary-400 uppercase tracking-wider mb-2">Destination</h4>
                   <p className="text-sm text-gray-300 flex items-start gap-2">
                     <MapPin className="w-4 h-4 mt-0.5 shrink-0" />
-                    {delivery.order?.user?.address || 'No address provided'}
+                      {(delivery.delivery_address || delivery.order?.user?.address || (delivery.lat && delivery.lng)) ? (
+                        <button onClick={() => setViewer({ open: true, delivery })} className="hover:underline text-left">
+                          {delivery.delivery_address || delivery.order?.user?.address || `${delivery.lat}, ${delivery.lng}`}
+                        </button>
+                      ) : 'No address provided'}
                   </p>
                 </div>
 
-                {delivery.notes && (
+                {(delivery.notes || delivery.order?.notes) && (
                   <div className="bg-navy-950 p-3 rounded text-sm text-gray-400">
                     <span className="font-medium text-gray-300 block mb-1">Notes:</span>
-                    {delivery.notes}
+                    {delivery.notes || delivery.order?.notes}
                   </div>
                 )}
               </div>
 
-              <div className="p-5 pt-0 mt-auto grid grid-cols-2 gap-3">
-                {delivery.status === 'pending' && (
+                <div className="p-5 pt-0 mt-auto grid grid-cols-2 gap-3">
+                {/* Map frontend actions to backend statuses: picked_up, out_for_delivery, delivered, failed */}
+                {delivery.status === 'assigned' && (
                   <>
-                    <button onClick={() => updateStatus(delivery.id, 'in_transit')} className="btn-primary py-2 w-full col-span-2">
-                      <Truck className="w-4 h-4 mr-2" /> Start Route
+                    <button disabled={!!updating[delivery.id]} onClick={() => requestUpdate(delivery.id, 'picked_up')} className="btn-primary py-2 w-full col-span-2">
+                      {updating[delivery.id] ? <LoadingSpinner size={1} /> : <><Truck className="w-4 h-4 mr-2" /> Pick Up</>}
                     </button>
                   </>
                 )}
-                {delivery.status === 'in_transit' && (
+
+                {delivery.status === 'picked_up' && (
                   <>
-                    <button onClick={() => updateStatus(delivery.id, 'pending')} className="btn-outline py-2 w-full text-xs">
+                    {/* Riders are not allowed to set status back to 'assigned' (admin-only). Show only forward action */}
+                    <button disabled={!!updating[delivery.id]} onClick={() => requestUpdate(delivery.id, 'out_for_delivery')} className="bg-blue-600 hover:bg-blue-500 text-white font-medium py-2 rounded-lg transition text-xs flex items-center justify-center col-span-2">
+                      {updating[delivery.id] ? <LoadingSpinner size={1} /> : <><Truck className="w-4 h-4 mr-1" /> Out for Delivery</>}
+                    </button>
+                  </>
+                )}
+
+                {delivery.status === 'out_for_delivery' && (
+                  <>
+                    <button disabled={!!updating[delivery.id]} onClick={() => requestUpdate(delivery.id, 'picked_up')} className="btn-outline py-2 w-full text-xs">
                       <RotateCcw className="w-3 h-3 mr-1" /> Revert
                     </button>
-                    <button onClick={() => updateStatus(delivery.id, 'delivered')} className="bg-green-600 hover:bg-green-500 text-white font-medium py-2 rounded-lg transition text-xs flex items-center justify-center">
-                      <CheckCircle2 className="w-4 h-4 mr-1" /> Complete
+                    <button disabled={!!updating[delivery.id]} onClick={() => requestUpdate(delivery.id, 'delivered')} className="bg-green-600 hover:bg-green-500 text-white font-medium py-2 rounded-lg transition text-xs flex items-center justify-center">
+                      {updating[delivery.id] ? <LoadingSpinner size={1} /> : <><CheckCircle2 className="w-4 h-4 mr-1" /> Complete</>}
                     </button>
                   </>
                 )}
+
                 {delivery.status === 'delivered' && (
                   <div className="col-span-2 text-center text-sm font-bold text-green-500 flex items-center justify-center gap-2">
                     <CheckCircle2 className="w-5 h-5" /> Delivery Completed
@@ -119,6 +156,15 @@ export default function Deliveries() {
           ))
         )}
       </div>
+
+      <Modal open={confirmModal.open} title="Confirm status update" onClose={() => setConfirmModal({ open: false, id: null, status: null })}>
+        <p className="text-gray-300 mb-4">Are you sure you want to set this delivery to <strong className="text-white">{confirmModal.status}</strong>?</p>
+        <div className="flex justify-end gap-2">
+          <button onClick={() => setConfirmModal({ open: false, id: null, status: null })} className="btn-outline py-2 px-4">Cancel</button>
+          <button onClick={() => updateStatus(confirmModal.id, confirmModal.status)} className="btn-primary py-2 px-4">Confirm</button>
+        </div>
+      </Modal>
+      <MapViewer open={viewer.open} onClose={() => setViewer({ open: false, delivery: null })} initial={viewer.delivery ? { lat: viewer.delivery.lat, lng: viewer.delivery.lng, address: viewer.delivery.delivery_address || viewer.delivery.order?.user?.address } : null} />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../api/axios';
-import { Users, Store, DollarSign, Activity } from 'lucide-react';
+import { Users, Store, DollarSign, Activity, CheckCircle2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function AdminDashboard() {
@@ -14,8 +14,9 @@ export default function AdminDashboard() {
 
   const fetchStats = async () => {
     try {
-      const { data } = await api.get('/admin/dashboard');
-      setStats(data);
+  const res = await api.get('/admin/dashboard');
+  const payload = res.data && res.data.data ? res.data.data : res.data;
+  setStats(payload || {});
     } catch (e) {
       toast.error('Failed to load admin stats');
     } finally {
@@ -31,7 +32,7 @@ export default function AdminDashboard() {
         <h1 className="text-3xl font-serif text-white">Platform Overview</h1>
         <div className="flex gap-4">
            {/* Placeholders for settings/reports links */}
-           <Link to="/admin/reports" className="btn-outline hidden sm:flex">Generate Reports</Link>
+          <Link to="/admin/reports" className="btn-outline hidden sm:flex">Generate Reports</Link>
         </div>
       </div>
 
@@ -68,7 +69,7 @@ export default function AdminDashboard() {
             <div className="bg-yellow-500/20 p-2 rounded-lg"><Store className="w-6 h-6 text-yellow-400" /></div>
           </div>
           <p className="text-3xl font-bold text-white mb-1">{stats.total_sellers}</p>
-          <Link to="/admin/users" className="text-xs text-primary-400 font-medium hover:underline">Manage Sellers &rarr;</Link>
+          <Link to="/admin/sellers" className="text-xs text-primary-400 font-medium hover:underline">Manage Sellers &rarr;</Link>
         </div>
       </div>
 
@@ -77,7 +78,7 @@ export default function AdminDashboard() {
         <div className="glass-card p-6">
            <h2 className="text-xl font-serif text-white mb-6">Recent Seller Applications</h2>
            <div className="space-y-4">
-             {stats.recent_sellers?.map(seller => (
+             {(stats.recent_sellers || []).map(seller => (
                <div key={seller.id} className="flex justify-between items-center bg-navy-950/50 p-4 border border-white/5 rounded-lg">
                  <div>
                    <p className="font-bold text-white">{seller.user?.name}</p>

@@ -30,7 +30,9 @@ export const useAuthStore = create((set, get) => ({
     set({ isLoading: true });
     try {
       const response = await api.get('/me');
-      set({ user: response.data, isAuthenticated: true });
+      // backend returns { user: { ... } }
+      const serverUser = response.data?.user || response.data || null;
+      set({ user: serverUser, isAuthenticated: true });
     } catch (error) {
       localStorage.removeItem('token');
       set({ user: null, token: null, isAuthenticated: false });

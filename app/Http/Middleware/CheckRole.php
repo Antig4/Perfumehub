@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 
 class CheckRole
 {
-    public function handle(Request $request, Closure $next, ...$roles): mixed
+    public function handle(Request $request, Closure $next, ...$roles)
     {
         if (!$request->user() || !in_array($request->user()->role, $roles)) {
             return response()->json(['message' => 'Unauthorized. Insufficient permissions.'], 403);

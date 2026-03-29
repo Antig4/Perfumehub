@@ -2,7 +2,9 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
-import { CreditCard, Wallet, ShieldCheck } from 'lucide-react';
+import { CreditCard, Wallet, ShieldCheck, ArrowLeft } from 'lucide-react';
+import MapPicker from '../components/MapPicker';
+import MapViewer from '../components/MapViewer';
 
 export default function Checkout() {
   const navigate = useNavigate();
@@ -15,8 +17,13 @@ export default function Checkout() {
     shipping_address: '',
     contact_phone: '',
     payment_method: 'gcash',
+    lat: null,
+    lng: null,
     notes: ''
   });
+
+  const [mapOpen, setMapOpen] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
 
   useEffect(() => {
     api.get('/cart').then(({ data }) => {
@@ -32,17 +39,27 @@ export default function Checkout() {
     
     try {
       // Create Database Order
-      const { data: orderRes } = await api.post('/checkout', formData);
+      // Some backends validate payment_method; when using the UI-only "mock" method
+      // send a known valid method (gcash) to satisfy validation, but keep the
+      // original selection for frontend simulation.
+      const payload = { ...formData, payment_method: formData.payment_method === 'mock' ? 'gcash' : formData.payment_method };
+      const { data: orderRes } = await api.post('/checkout', payload);
       const order = orderRes.data;
+      // If using mock payment, skip PayMongo and simulate success
+      if (formData.payment_method === 'mock') {
+        toast.success('Test payment successful — order created');
+        setProcessing(false);
+        navigate('/orders');
+        return;
+      }
 
-      // Create PayMongo Intent
+      // Create PayMongo Intent (existing flow)
       const { data: pmRes } = await api.post('/payment/intent', {
         order_id: order.id,
         payment_method: formData.payment_method
       });
 
       setPaymongoClientKey(pmRes.client_key);
-      
       // Attempt generic attach simulation for GCash redirect flow
       await handlePayMongoAttach(pmRes.payment_intent_id);
 
@@ -81,7 +98,10 @@ export default function Checkout() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-      <h1 className="text-3xl font-serif text-white mb-8">Secure Checkout</h1>
+          <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-gray-400 hover:text-white mb-4 transition">
+            <ArrowLeft className="w-4 h-4" /> Back
+          </button>
+          <h1 className="text-3xl font-serif text-white mb-8">Secure Checkout</h1>
       
       <div className="flex flex-col lg:flex-row gap-8">
         {/* Form */}
@@ -95,6 +115,15 @@ export default function Checkout() {
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1">Full Delivery Address</label>
                   <textarea required className="input-field min-h-[100px]" placeholder="Street, Barangay, City, Province" value={formData.shipping_address} onChange={e => setFormData({...formData, shipping_address: e.target.value})}></textarea>
+                  <div className="mt-2 flex items-center gap-2">
+                    <button type="button" onClick={() => setMapOpen(true)} className="btn-outline">Pick on Map</button>
+                    {formData.lat && formData.lng && (
+                      <>
+                        <span className="text-sm text-gray-400">Coords: {formData.lat.toFixed(5)}, {formData.lng.toFixed(5)}</span>
+                        <button type="button" onClick={() => setViewerOpen(true)} className="ml-2 text-sm btn-outline">Preview</button>
+                      </>
+                    )}
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-300 mb-1">Contact Phone Number</label>
@@ -105,6 +134,11 @@ export default function Checkout() {
                   <input type="text" className="input-field" placeholder="Landmarks or delivery instructions" value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} />
                 </div>
               </div>
+              <MapPicker open={mapOpen} onClose={() => setMapOpen(false)} initial={formData.lat && formData.lng ? { lat: formData.lat, lng: formData.lng } : null} onSelect={({ lat, lng, address }) => {
+                setFormData(prev => ({ ...prev, shipping_address: address || prev.shipping_address, lat, lng }));
+                setMapOpen(false);
+              }} />
+              <MapViewer open={viewerOpen} onClose={() => setViewerOpen(false)} initial={formData.lat && formData.lng ? { lat: formData.lat, lng: formData.lng, address: formData.shipping_address } : null} />
             </div>
 
             {/* Payment Info */}
@@ -122,6 +156,14 @@ export default function Checkout() {
                    <input type="radio" name="payment" value="card" checked={formData.payment_method === 'card'} onChange={() => setFormData({...formData, payment_method: 'card'})} className="sr-only" />
                    <CreditCard className={`w-8 h-8 ${formData.payment_method === 'card' ? 'text-primary-500' : 'text-gray-500'}`} />
                    <span className="font-medium text-white">Credit / Debit Card</span>
+                 </label>
+
+                 {/* Mock/Test Payment Method */}
+                 <label className={`cursor-pointer border rounded-xl p-4 flex flex-col items-center gap-3 transition-all ${formData.payment_method === 'mock' ? 'border-green-500 bg-green-500/10' : 'border-gray-800 hover:border-gray-600 bg-navy-900'}`}>
+                   <input type="radio" name="payment" value="mock" checked={formData.payment_method === 'mock'} onChange={() => setFormData({...formData, payment_method: 'mock'})} className="sr-only" />
+                   <ShieldCheck className={`w-8 h-8 ${formData.payment_method === 'mock' ? 'text-green-400' : 'text-gray-500'}`} />
+                   <span className="font-medium text-white">Mock Payment (Test)</span>
+                   <span className="text-xs text-gray-400 mt-1">Use this to simulate a successful payment — no real charge.</span>
                  </label>
 
                </div>

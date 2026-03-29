@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import api from '../api/axios';
+import { useAuthStore } from '../stores/authStore';
 import ProductCard from '../components/ProductCard';
 import { Filter, SlidersHorizontal, ChevronDown } from 'lucide-react';
 
@@ -8,13 +9,13 @@ export default function Catalog() {
   const [loading, setLoading] = useState(true);
   const [categories, setCategories] = useState([]);
   const [brands, setBrands] = useState([]);
+  const { isAuthenticated } = useAuthStore();
   
   const [filters, setFilters] = useState({
-    category: '',
-    brand: '',
+    category_id: '',
+    brand_id: '',
     gender: '',
-    sort: 'created_at',
-    order: 'desc'
+    sort: 'newest'
   });
 
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -33,9 +34,25 @@ export default function Catalog() {
     const fetchProducts = async () => {
       setLoading(true);
       try {
-        const queryParams = new URLSearchParams(filters).toString();
-        const { data } = await api.get(`/products?${queryParams}`);
-        setProducts(data?.data || data || []); // Sanctum pagination wrapper
+        // Only include non-empty filter values so backend doesn't receive empty params
+        const params = new URLSearchParams();
+        Object.entries(filters).forEach(([k, v]) => {
+          if (v !== '' && v !== null && typeof v !== 'undefined') params.append(k, v);
+        });
+        const { data } = await api.get(`/products?${params.toString()}`);
+        let prods = data?.data || data || [];
+        // If authenticated, fetch wishlist and mark products accordingly so hearts persist
+        if (isAuthenticated) {
+          try {
+            const wRes = await api.get('/wishlist');
+            const wdata = wRes.data?.data || wRes.data || [];
+            const wishSet = new Set(wdata.map(w => (w.product?.id || w.product_id)).filter(Boolean));
+            prods = (Array.isArray(prods) ? prods : []).map(p => ({ ...p, in_wishlist: !!wishSet.has(p.id) }));
+          } catch (e) {
+            // ignore wishlist fetch errors; products still render
+          }
+        }
+        setProducts(prods); // Sanctum pagination wrapper
       } catch (e) {
         console.error(e);
       } finally {
@@ -43,6 +60,18 @@ export default function Catalog() {
       }
     };
     fetchProducts();
+    // Keep product wishlist flags in sync when other parts of the app change wishlist
+    const onWishlistUpdate = (e) => {
+      const detail = e.detail || {};
+      const { productId, in_wishlist } = detail;
+      if (!productId) return;
+      setProducts(prev => (Array.isArray(prev) ? prev.map(p => p.id === productId ? { ...p, in_wishlist: !!in_wishlist } : p) : prev));
+    };
+    window.addEventListener('wishlist:updated', onWishlistUpdate);
+
+    return () => {
+      window.removeEventListener('wishlist:updated', onWishlistUpdate);
+    };
   }, [filters]);
 
   const handleFilterChange = (key, value) => {
@@ -68,16 +97,13 @@ export default function Catalog() {
           <div className="relative w-full md:w-64">
             <select 
               className="input-field appearance-none pr-10"
-              value={`${filters.sort}|${filters.order}`}
-              onChange={(e) => {
-                const [sort, order] = e.target.value.split('|');
-                setFilters(prev => ({ ...prev, sort, order }));
-              }}
+              value={filters.sort}
+              onChange={(e) => setFilters(prev => ({ ...prev, sort: e.target.value }))}
             >
-              <option value="created_at|desc">Newest Arrivals</option>
-              <option value="sales_count|desc">Most Popular</option>
-              <option value="price|asc">Price: Low to High</option>
-              <option value="price|desc">Price: High to Low</option>
+              <option value="newest">Newest Arrivals</option>
+              <option value="popular">Most Popular</option>
+              <option value="price_asc">Price: Low to High</option>
+              <option value="price_desc">Price: High to Low</option>
             </select>
             <ChevronDown className="absolute right-3 top-3 w-5 h-5 text-gray-500 pointer-events-none" />
           </div>
@@ -87,7 +113,7 @@ export default function Catalog() {
       <div className="flex flex-col md:flex-row gap-8">
         
         {/* Sidebar */}
-        <div className={`md:w-64 shrink-0 space-y-8 ${isFilterOpen ? 'block' : 'hidden md:block'}`}>
+        <div className={`md:w-64 shrink-0 space-y-8 ${isFilterOpen ? 'fixed inset-y-0 left-0 z-50 w-64 block md:block' : 'hidden md:block'}`}>
           <div className="glass-card p-6">
             <div className="flex items-center gap-2 text-white font-medium text-lg mb-6 border-b border-white/5 pb-4">
               <SlidersHorizontal className="w-5 h-5 text-primary-500" /> Filters
@@ -99,12 +125,12 @@ export default function Catalog() {
                 <h3 className="text-primary-400 text-sm font-semibold uppercase tracking-wider mb-3">Scent Family</h3>
                 <div className="space-y-2">
                   <label className="flex items-center gap-3 cursor-pointer text-gray-300 hover:text-white transition">
-                    <input type="radio" name="cat" checked={filters.category === ''} onChange={() => handleFilterChange('category', '')} className="accent-primary-500 w-4 h-4" />
+                    <input type="radio" name="cat" checked={filters.category_id === ''} onChange={() => handleFilterChange('category_id', '')} className="accent-primary-500 w-4 h-4" />
                      All Scents
                   </label>
                   {(Array.isArray(categories) ? categories : []).map(c => (
                     <label key={c.id} className="flex items-center gap-3 cursor-pointer text-gray-300 hover:text-white transition">
-                      <input type="radio" name="cat" checked={filters.category === String(c.id)} onChange={() => handleFilterChange('category', c.id)} className="accent-primary-500 w-4 h-4" />
+                      <input type="radio" name="cat" checked={String(filters.category_id) === String(c.id)} onChange={() => handleFilterChange('category_id', c.id)} className="accent-primary-500 w-4 h-4" />
                       {c.name}
                     </label>
                   ))}
@@ -128,27 +154,31 @@ export default function Catalog() {
           </div>
         </div>
 
-        {/* Product Grid */}
-        <div className="flex-1">
-          {loading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[1,2,3,4,5,6].map(i => (
-                <div key={i} className="animate-pulse bg-navy-900 rounded-2xl h-[450px] border border-white/5"></div>
-              ))}
-            </div>
-          ) : products.length > 0 ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {(Array.isArray(products) ? products : []).map(product => (
+        {/* Backdrop for mobile filter overlay */}
+        {isFilterOpen && (
+          <div onClick={() => setIsFilterOpen(false)} className="md:hidden fixed inset-0 bg-black/40 z-40" />
+        )}
+
+  {/* Product Grid */}
+  <div className={`flex-1 ${isFilterOpen ? 'md:ml-64' : ''}`}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {loading ? (
+              // Render placeholders (null product) to keep layout stable while fetching
+              Array.from({ length: 6 }).map((_, i) => (
+                <ProductCard key={`ph-${i}`} product={null} />
+              ))
+            ) : (products.length > 0 ? (
+              (Array.isArray(products) ? products : []).map(product => (
                 <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
-          ) : (
-             <div className="text-center py-24 glass-card">
-               <h3 className="text-xl text-gray-300 mb-2">No fragrances found</h3>
-               <p className="text-gray-500">Try adjusting your filters to see more results.</p>
-               <button onClick={() => setFilters({category: '', brand: '', gender: '', sort: 'created_at', order: 'desc'})} className="mt-4 text-primary-400 font-medium">Clear Filters</button>
-             </div>
-          )}
+              ))
+            ) : (
+              <div className="col-span-full text-center py-24 glass-card">
+                <h3 className="text-xl text-gray-300 mb-2">No fragrances found</h3>
+                <p className="text-gray-500">Try adjusting your filters to see more results.</p>
+                <button onClick={() => setFilters({category_id: '', brand_id: '', gender: '', sort: 'newest'})} className="mt-4 text-primary-400 font-medium">Clear Filters</button>
+              </div>
+            ))}
+          </div>
         </div>
 
       </div>
