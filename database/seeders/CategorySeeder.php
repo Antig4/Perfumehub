@@ -19,7 +19,10 @@ class CategorySeeder extends Seeder
         ];
 
         foreach ($categories as $cat) {
-            Category::create(array_merge($cat, ['slug' => Str::slug($cat['name'])]));
+            Category::updateOrCreate(
+                ['name' => $cat['name']],
+                array_merge($cat, ['slug' => Str::slug($cat['name'])])
+            );
         }
     }
 }

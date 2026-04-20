@@ -24,7 +24,10 @@ class BrandSeeder extends Seeder
         ];
 
         foreach ($brands as $brand) {
-            Brand::create(array_merge($brand, ['slug' => Str::slug($brand['name'])]));
+            Brand::updateOrCreate(
+                ['name' => $brand['name']],
+                array_merge($brand, ['slug' => Str::slug($brand['name'])])
+            );
         }
     }
 }

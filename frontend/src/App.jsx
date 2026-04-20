@@ -14,6 +14,7 @@ import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
 import OrderHistory from './pages/OrderHistory';
 import Wishlist from './pages/Wishlist';
+import Profile from './pages/Profile';
 
 import SellerDashboard from './pages/seller/Dashboard';
 import SellerProducts from './pages/seller/Products';
@@ -64,8 +65,9 @@ function App() {
           {/* Customer / Authenticated Routes */}
           <Route path="/cart" element={<ProtectedRoute allowedRoles={['customer']}><Cart /></ProtectedRoute>} />
           <Route path="/checkout" element={<ProtectedRoute allowedRoles={['customer']}><Checkout /></ProtectedRoute>} />
-            <Route path="/orders" element={<ProtectedRoute allowedRoles={['customer', 'seller', 'admin']}><OrderHistory /></ProtectedRoute>} />
-            <Route path="/wishlist" element={<ProtectedRoute allowedRoles={['customer']}><Wishlist /></ProtectedRoute>} />
+          <Route path="/orders" element={<ProtectedRoute allowedRoles={['customer', 'seller', 'admin']}><OrderHistory /></ProtectedRoute>} />
+          <Route path="/wishlist" element={<ProtectedRoute allowedRoles={['customer']}><Wishlist /></ProtectedRoute>} />
+          <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           
           {/* Seller Routes */}
           <Route path="/seller/dashboard" element={<ProtectedRoute allowedRoles={['seller']}><SellerDashboard /></ProtectedRoute>} />

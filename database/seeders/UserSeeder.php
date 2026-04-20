@@ -15,13 +15,15 @@ class UserSeeder extends Seeder
     public function run()
     {
         // Admin
-        User::create([
-            'name' => 'PerfumeHub Admin',
-            'email' => 'admin@perfumehub.com',
-            'password' => Hash::make('password'),
-            'role' => 'admin',
-            'is_active' => true,
-        ]);
+        $admin = User::firstOrCreate(
+            ['email' => 'admin@perfumehub.com'],
+            [
+                'name' => 'PerfumeHub Admin',
+                'password' => Hash::make('password'),
+                'role' => 'admin',
+                'is_active' => true,
+            ]
+        );
 
         // Sellers
         $sellers = [
@@ -31,22 +33,26 @@ class UserSeeder extends Seeder
         ];
 
         foreach ($sellers as $idx => $s) {
-            $user = User::create([
-                'name' => $s['name'],
-                'email' => $s['email'],
-                'password' => Hash::make('password'),
-                'role' => 'seller',
-                'is_active' => true,
-            ]);
-            SellerProfile::create([
-                'user_id' => $user->id,
-                'store_name' => $s['store'],
-                'store_slug' => Str::slug($s['store']) . '-' . $user->id,
-                'description' => 'Your trusted source for authentic luxury perfumes.',
-                'status' => 'approved',
-                'rating' => round(4.2 + ($idx * 0.1), 1),
-                'total_sales' => 50 + ($idx * 20),
-            ]);
+            $user = User::firstOrCreate(
+                ['email' => $s['email']],
+                [
+                    'name' => $s['name'],
+                    'password' => Hash::make('password'),
+                    'role' => 'seller',
+                    'is_active' => true,
+                ]
+            );
+            SellerProfile::updateOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'store_name' => $s['store'],
+                    'store_slug' => Str::slug($s['store']) . '-' . $user->id,
+                    'description' => 'Your trusted source for authentic luxury perfumes.',
+                    'status' => 'approved',
+                    'rating' => round(4.2 + ($idx * 0.1), 1),
+                    'total_sales' => 50 + ($idx * 20),
+                ]
+            );
         }
 
         // Customers
@@ -59,14 +65,16 @@ class UserSeeder extends Seeder
         ];
 
         foreach ($customers as $c) {
-            $user = User::create([
-                'name' => $c['name'],
-                'email' => $c['email'],
-                'password' => Hash::make('password'),
-                'role' => 'customer',
-                'is_active' => true,
-            ]);
-            Cart::create(['user_id' => $user->id]);
+            $user = User::firstOrCreate(
+                ['email' => $c['email']],
+                [
+                    'name' => $c['name'],
+                    'password' => Hash::make('password'),
+                    'role' => 'customer',
+                    'is_active' => true,
+                ]
+            );
+            \App\Models\Cart::firstOrCreate(['user_id' => $user->id]);
         }
 
         // Riders
@@ -76,19 +84,23 @@ class UserSeeder extends Seeder
         ];
 
         foreach ($riders as $r) {
-            $user = User::create([
-                'name' => $r['name'],
-                'email' => $r['email'],
-                'password' => Hash::make('password'),
-                'role' => 'rider',
-                'is_active' => true,
-            ]);
-            RiderProfile::create([
-                'user_id' => $user->id,
-                'vehicle_type' => 'Motorcycle',
-                'vehicle_plate' => 'ABC-' . rand(1000, 9999),
-                'is_available' => true,
-            ]);
+            $user = User::firstOrCreate(
+                ['email' => $r['email']],
+                [
+                    'name' => $r['name'],
+                    'password' => Hash::make('password'),
+                    'role' => 'rider',
+                    'is_active' => true,
+                ]
+            );
+            RiderProfile::updateOrCreate(
+                ['user_id' => $user->id],
+                [
+                    'vehicle_type' => 'Motorcycle',
+                    'vehicle_plate' => 'ABC-' . rand(1000, 9999),
+                    'is_available' => true,
+                ]
+            );
         }
     }
 }

@@ -411,9 +411,20 @@ export default function Navbar() {
                     </Link>
                   </>
                 )}
-                <Link to={getDashboardLink()} className="text-sm font-medium text-gray-300 hover:text-white flex items-center gap-2">
-                  <User className="w-4 h-4" />
-                  {user?.name}
+                {user?.role !== 'customer' && (
+                  <Link to={getDashboardLink()} className="text-sm font-medium text-gray-300 hover:text-white">
+                    Dashboard
+                  </Link>
+                )}
+                <Link to="/profile" className="text-sm font-medium text-gray-300 hover:text-white flex items-center gap-2">
+                  {user?.avatar_url ? (
+                    <img src={user?.avatar_url} alt="" className="w-7 h-7 rounded-full object-cover border border-white/20" />
+                  ) : (
+                    <div className="w-7 h-7 rounded-full bg-navy-800 flex items-center justify-center border border-white/10">
+                      <User className="w-4 h-4 text-gray-400" />
+                    </div>
+                  )}
+                  <span className="hidden lg:inline-block">{user?.name}</span>
                 </Link>
                 <button onClick={handleLogout} className="text-gray-500 hover:text-red-400 transition">
                   <LogOut className="w-5 h-5" />
@@ -465,7 +476,10 @@ export default function Navbar() {
                   </Link>
                 </>
               )}
-              <Link to={getDashboardLink()} className="block nav-link text-lg text-primary-400">My Account</Link>
+              {user?.role !== 'customer' && (
+                <Link to={getDashboardLink()} className="block nav-link text-lg">Dashboard</Link>
+              )}
+              <Link to="/profile" className="block nav-link text-lg text-primary-400">My Profile</Link>
               <button onClick={handleLogout} className="text-red-400 text-lg w-full text-left font-medium">Log out</button>
             </>
           ) : (
