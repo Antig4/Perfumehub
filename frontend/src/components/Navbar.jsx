@@ -3,7 +3,7 @@ import { useAuthStore } from '../stores/authStore';
 import { useNotificationStore } from '../stores/notificationStore';
 import { ShoppingBag, ShoppingCart, Search, Menu, User, LogOut, Heart, Bell } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
-import LoadingSpinner from './LoadingSpinner';
+
 import OrderPreview from './OrderPreview';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
@@ -103,7 +103,7 @@ export default function Navbar() {
           setAcceptLoading(s => ({ ...s, [n.id]: false }));
         }
       }} className="btn-primary py-1 px-3 text-sm">
-        {acceptLoading[n.id] ? <LoadingSpinner size={0.9} /> : 'Accept'}
+        {acceptLoading[n.id] ? '...' : 'Accept'}
       </button>
     );
   };
@@ -311,7 +311,7 @@ export default function Navbar() {
                       <h4 className="text-sm text-gray-400">Notifications</h4>
                       <div className="flex items-center gap-2">
                         <button onClick={async () => { await useNotificationStore.getState().markAll(); }} className="text-xs text-primary-400 hover:underline">Mark all as read</button>
-                        {useNotificationStore.getState().loading ? <LoadingSpinner size={1.25} /> : null}
+                        {useNotificationStore.getState().loading ? <span className="text-xs text-gray-500">Loading...</span> : null}
                       </div>
                       </div>
                     <div ref={el => { /* attach scroll listener via closure below */ }} className="space-y-2 max-h-64 overflow-auto" onScroll={async (e) => {

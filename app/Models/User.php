@@ -12,7 +12,7 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, Notifiable;
 
     protected $fillable = [
-        'name', 'email', 'password', 'role', 'phone', 'address', 'avatar', 'is_active',
+        'name', 'email', 'password', 'role', 'phone', 'address', 'lat', 'lng', 'avatar', 'is_active',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -20,7 +20,11 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'is_active' => 'boolean',
+        'lat' => 'float',
+        'lng' => 'float',
     ];
+
+    protected $appends = ['avatar_url'];
 
     // Role helpers
     public function isAdmin(): bool    { return $this->role === 'admin'; }

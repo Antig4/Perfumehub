@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
-import LoadingSpinner from '../../components/LoadingSpinner';
+
 import toast from 'react-hot-toast';
 
 export default function OrderDetail() {
@@ -91,7 +91,7 @@ export default function OrderDetail() {
     }
   };
 
-  if (loading) return <div className="p-12 text-center"><LoadingSpinner size={1.5} /></div>;
+  if (loading) return <div className="p-12 text-center text-gray-400">Loading order...</div>;
   if (!order) return (
     <div className="p-12 text-center text-gray-400">
       <div className="mb-4">Order not found or you do not have access to view it.</div>
@@ -133,7 +133,7 @@ export default function OrderDetail() {
                     <option value="cancelled">Cancelled</option>
                   </select>
                   {quickAction() && (
-                    <button onClick={quickAction()} className="btn-primary py-1 px-3 text-sm">{updating ? <LoadingSpinner size={0.9} /> : 'Quick'}</button>
+                    <button onClick={quickAction()} className="btn-primary py-1 px-3 text-sm">{updating ? '...' : 'Quick'}</button>
                   )}
                 </>
               )}

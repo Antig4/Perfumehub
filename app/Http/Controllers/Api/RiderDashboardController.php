@@ -35,6 +35,24 @@ class RiderDashboardController extends Controller
             'completed_today'    => $completedToday,
             'recent_activity'    => $recentDeliveries,
             'rating'             => $riderProfile ? $riderProfile->rating : 0,
+            'is_available'       => $riderProfile ? (bool) $riderProfile->is_available : false,
+        ]);
+    }
+
+    public function toggleAvailability(Request $request)
+    {
+        $riderProfile = $request->user()->riderProfile;
+        if (!$riderProfile) {
+            return response()->json(['message' => 'Rider profile not found.'], 404);
+        }
+
+        // Toggle the status
+        $newStatus = !$riderProfile->is_available;
+        $riderProfile->update(['is_available' => $newStatus]);
+
+        return response()->json([
+            'message'      => $newStatus ? 'You are now Available.' : 'You are now Busy / Offline.',
+            'is_available' => $newStatus,
         ]);
     }
 }

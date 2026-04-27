@@ -32,7 +32,7 @@ export default function MapViewer({ open, onClose, initial }) {
       const L = window.L;
       if (!mapRef.current && containerRef.current && initial && initial.lat && initial.lng) {
         mapRef.current = L.map(containerRef.current, { zoomControl: true, attributionControl: false }).setView([initial.lat, initial.lng], 15);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(mapRef.current);
+        L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', { attribution: '&copy; Google Maps' }).addTo(mapRef.current);
         markerRef.current = L.marker([initial.lat, initial.lng]).addTo(mapRef.current);
       } else if (mapRef.current && initial && initial.lat && initial.lng) {
         // If map already exists (rare), update marker and view

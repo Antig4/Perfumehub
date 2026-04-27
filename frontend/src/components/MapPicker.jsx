@@ -41,9 +41,9 @@ export default function MapPicker({ open, onClose, onSelect, initial }) {
         markerRef.current = null;
       }
 
-      mapRef.current = L.map(containerRef.current).setView(initial ? [initial.lat, initial.lng] : [14.5995, 120.9842], 13);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors'
+      mapRef.current = L.map(containerRef.current).setView(initial ? [initial.lat, initial.lng] : [8.9475, 125.5406], 13);
+      L.tileLayer('https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+        attribution: '&copy; Google Maps'
       }).addTo(mapRef.current);
 
       mapRef.current.on('click', (e) => {

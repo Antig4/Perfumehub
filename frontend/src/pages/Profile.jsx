@@ -2,7 +2,9 @@ import { useState, useRef } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import api from '../api/axios';
 import toast from 'react-hot-toast';
-import { User, Camera, Lock } from 'lucide-react';
+import { User, Camera, Lock, MapPin } from 'lucide-react';
+import MapPicker from '../components/MapPicker';
+import MapViewer from '../components/MapViewer';
 
 export default function Profile() {
   const { user, fetchUser } = useAuthStore();
@@ -22,12 +24,21 @@ export default function Profile() {
   });
   
   const fileInputRef = useRef();
+  const [mapOpen, setMapOpen] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [mapCoords, setMapCoords] = useState(
+    user?.lat && user?.lng ? { lat: user.lat, lng: user.lng } : null
+  );
 
   const handleProfileUpdate = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await api.put('/profile', formData);
+      await api.put('/profile', {
+        ...formData,
+        lat: mapCoords?.lat || null,
+        lng: mapCoords?.lng || null,
+      });
       await fetchUser();
       toast.success('Profile updated successfully');
     } catch (err) {
@@ -139,7 +150,7 @@ export default function Profile() {
                   className="input-field" 
                   value={formData.phone} 
                   onChange={e => setFormData({...formData, phone: e.target.value})} 
-                  placeholder="(Optional) e.g., +1 234 567 8900"
+                  placeholder="(Optional) e.g., +63 912 345 6789"
                 />
               </div>
               <div>
@@ -150,6 +161,18 @@ export default function Profile() {
                   onChange={e => setFormData({...formData, address: e.target.value})} 
                   placeholder="(Optional) Enter your full delivery address"
                 />
+                <div className="mt-2 flex items-center gap-2 flex-wrap">
+                  <button type="button" onClick={() => setMapOpen(true)} className="btn-outline text-sm py-1.5 px-3 flex items-center gap-1.5">
+                    <MapPin className="w-4 h-4" /> Pick on Map
+                  </button>
+                  {mapCoords && (
+                    <>
+                      <span className="text-xs text-gray-400">📍 {mapCoords.lat.toFixed(5)}, {mapCoords.lng.toFixed(5)}</span>
+                      <button type="button" onClick={() => setViewerOpen(true)} className="text-xs text-primary-400 hover:text-primary-300 transition">Preview</button>
+                    </>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 mt-1.5">This address will be auto-filled during checkout.</p>
               </div>
               <button disabled={loading} type="submit" className="btn-primary py-2 px-6">
                 {loading ? 'Saving...' : 'Save Changes'}
@@ -206,6 +229,26 @@ export default function Profile() {
 
         </div>
       </div>
+
+      {/* Map Picker Modal */}
+      <MapPicker 
+        open={mapOpen} 
+        onClose={() => setMapOpen(false)} 
+        initial={mapCoords} 
+        onSelect={({ lat, lng, address }) => {
+          setMapCoords({ lat, lng });
+          if (address) {
+            setFormData(prev => ({ ...prev, address }));
+          }
+          setMapOpen(false);
+          toast.success('Address set from map! Click "Save Changes" to save.');
+        }} 
+      />
+      <MapViewer 
+        open={viewerOpen} 
+        onClose={() => setViewerOpen(false)} 
+        initial={mapCoords ? { lat: mapCoords.lat, lng: mapCoords.lng, address: formData.address } : null} 
+      />
     </div>
   );
 }

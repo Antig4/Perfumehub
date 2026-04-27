@@ -102,7 +102,7 @@ export default function SellerProducts() {
                   <tr key={product.id} className="hover:bg-white/5 transition">
                     <td className="p-4 flex items-center gap-4">
                       <div className="w-12 h-16 bg-navy-950 rounded shrink-0 overflow-hidden">
-                         <img src={product.primary_image?.image_path || 'https://via.placeholder.com/150'} alt="" className="w-full h-full object-cover" />
+                         <img src={product.primary_image?.image_url || 'https://placehold.co/150x200/1a1a2e/gold?text=No+Image'} alt="" className="w-full h-full object-cover" />
                       </div>
                       <div>
                         <p className="font-medium text-white">{product.name}</p>

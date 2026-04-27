@@ -60,6 +60,7 @@ class ProductController extends Controller
                 $q->where('sales_count', '>=', 10)->orWhere('view_count', '>=', 50);
             })
             ->orderByDesc('sales_count')
+            ->orderByDesc('view_count')
             ->take(12)
             ->get()
             ->map(fn($p) => $p->append('is_trending'));
@@ -170,6 +171,31 @@ class ProductController extends Controller
         }
         Storage::disk('public')->delete($image->image_path);
         $image->delete();
+        
+        // If the deleted image was primary, make the first remaining image primary
+        if ($image->is_primary) {
+            $nextPrimary = $product->images()->orderBy('sort_order')->first();
+            if ($nextPrimary) {
+                $nextPrimary->update(['is_primary' => true]);
+            }
+        }
+        
         return response()->json(['message' => 'Image deleted.']);
+    }
+
+    public function setPrimaryImage(Request $request, ProductImage $image)
+    {
+        $product = $image->product;
+        if ($request->user()->role === 'seller' && $product->seller_id !== $request->user()->id) {
+            return response()->json(['message' => 'Unauthorized.'], 403);
+        }
+
+        // Set all other images for this product to not primary
+        $product->images()->update(['is_primary' => false]);
+
+        // Set this image as primary
+        $image->update(['is_primary' => true]);
+
+        return response()->json(['message' => 'Primary image updated.']);
     }
 }

@@ -73,6 +73,13 @@ class ProductSeeder extends Seeder
             ['name' => 'YSL Black Opium', 'price' => 5600, 'stock' => 20, 'sales_count' => 75, 'gender' => 'female', 'volume' => '90ml',
              'desc' => 'The rock \'n\' roll perfume for women. Addictive coffee and floral notes.',
              'scent' => 'Coffee, Vanilla, White Flowers, Pink Pepper'],
+            // Burberry
+            ['name' => 'Burberry Her', 'price' => 5400, 'stock' => 25, 'sales_count' => 60, 'gender' => 'female', 'volume' => '100ml',
+             'desc' => 'A vibrant fruity gourmand capturing the spirit of London.',
+             'scent' => 'Red Berries, Jasmine, Musk, Amber', 'seller_email' => 'luxe@perfumehub.com'],
+            ['name' => 'Mr. Burberry', 'price' => 4800, 'stock' => 20, 'sales_count' => 40, 'gender' => 'male', 'volume' => '100ml',
+             'desc' => 'A classic yet contemporary British fragrance for men.',
+             'scent' => 'Grapefruit, Tarragon, Vetiver, Sandalwood', 'seller_email' => 'luxe@perfumehub.com'],
         ];
 
         // Category map by scent keywords
@@ -94,6 +101,7 @@ class ProductSeeder extends Seeder
             'Gucci' => $brands->firstWhere('name', 'Gucci'),
             'Hugo Boss' => $brands->firstWhere('name', 'Hugo Boss'),
             'Yves Saint Laurent' => $brands->firstWhere('name', 'Yves Saint Laurent'),
+            'Burberry' => $brands->firstWhere('name', 'Burberry'),
         ];
 
         $productBrandAssoc = [
@@ -106,6 +114,7 @@ class ProductSeeder extends Seeder
             'Gucci Bloom' => 'Gucci',
             'Hugo Boss Bottled' => 'Hugo Boss',
             'YSL Black Opium' => 'Yves Saint Laurent',
+            'Burberry Her' => 'Burberry', 'Mr. Burberry' => 'Burberry',
         ];
 
         $productCategoryAssoc = [
@@ -118,14 +127,25 @@ class ProductSeeder extends Seeder
             'Gucci Bloom' => 'floral',
             'Hugo Boss Bottled' => 'woody',
             'YSL Black Opium' => 'oriental',
+            'Burberry Her' => 'fruity', 'Mr. Burberry' => 'woody',
         ];
 
         $sampleImages = [
-            'https://images.unsplash.com/photo-1541643600914-78b084683702?w=400',
-            'https://images.unsplash.com/photo-1588776814546-1ffbb28f3e1b?w=400',
-            'https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?w=400',
-            'https://images.unsplash.com/photo-1527799820374-dcf8d9d4a388?w=400',
-            'https://images.unsplash.com/photo-1615634260167-c8cdede054de?w=400',
+            'https://images.unsplash.com/photo-1523293182086-7651a899d37f?w=400&q=80',
+            'https://images.unsplash.com/photo-1594035910387-fea081ac6bd0?w=400&q=80',
+            'https://images.unsplash.com/photo-1592945403244-b3fbafd7f539?w=400&q=80',
+            'https://images.unsplash.com/photo-1563170351-be82bc888aa4?w=400&q=80',
+            'https://images.unsplash.com/photo-1615634260167-c8cdede054de?w=400&q=80',
+            'https://images.unsplash.com/photo-1587017539504-67cfbddac569?w=400&q=80',
+            'https://images.unsplash.com/photo-1595425970377-c9703cf48b6d?w=400&q=80',
+            'https://images.unsplash.com/photo-1557170334-a9632e77c6e4?w=400&q=80',
+            'https://images.unsplash.com/photo-1585386959984-a4155224a1ad?w=400&q=80',
+            'https://images.unsplash.com/photo-1541643600914-78b084683702?w=400&q=80',
+            'https://images.unsplash.com/photo-1588405748880-12d1d2a59f75?w=400&q=80',
+            'https://images.unsplash.com/photo-1590736969955-71cc94901144?w=400&q=80',
+            'https://images.unsplash.com/photo-1619994403073-2cec844b8c63?w=400&q=80',
+            'https://images.unsplash.com/photo-1602928321679-560bb453f190?w=400&q=80',
+            'https://images.unsplash.com/photo-1608528577891-eb055944f2e7?w=400&q=80',
         ];
 
         foreach ($products as $idx => $p) {
@@ -133,7 +153,13 @@ class ProductSeeder extends Seeder
             $catKey    = $productCategoryAssoc[$p['name']] ?? 'floral';
             $brand     = $brandMap[$brandName] ?? $brands->first();
             $category  = $categoryMap[$catKey] ?? $categories->first();
-            $seller    = $sellers[$idx % $sellers->count()];
+            
+            $sellerEmail = $p['seller_email'] ?? null;
+            if ($sellerEmail) {
+                $seller = $sellers->firstWhere('email', $sellerEmail) ?? $sellers[$idx % $sellers->count()];
+            } else {
+                $seller = $sellers[$idx % $sellers->count()];
+            }
 
             $product = Product::create([
                 'seller_id'    => $seller->id,

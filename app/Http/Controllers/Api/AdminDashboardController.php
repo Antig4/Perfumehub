@@ -81,4 +81,73 @@ class AdminDashboardController extends Controller
         $sellerProfile->user->update(['is_active' => $request->status === 'approved']);
         return response()->json(['message' => 'Seller status updated.', 'data' => $sellerProfile]);
     }
+
+    /** Admin: List all review reports */
+    public function reviewReports(Request $request)
+    {
+        $status = $request->get('status', 'pending');
+
+        $reports = DB::table('review_reports as rr')
+            ->join('reviews as r',       'rr.review_id', '=', 'r.id')
+            ->join('users as reporter',  'rr.user_id',   '=', 'reporter.id')
+            ->join('users as author',    'r.user_id',    '=', 'author.id')
+            ->join('products as p',      'r.product_id', '=', 'p.id')
+            ->select([
+                'rr.id',
+                'rr.reason',
+                'rr.description',
+                'rr.status',
+                'rr.created_at',
+                'r.id as review_id',
+                'r.comment as review_comment',
+                'r.rating as review_rating',
+                'r.media as review_media',
+                'r.is_visible as review_visible',
+                'reporter.name as reporter_name',
+                'reporter.email as reporter_email',
+                'reporter.avatar as reporter_avatar',
+                'author.name as author_name',
+                'author.email as author_email',
+                'author.avatar as author_avatar',
+                'p.name as product_name',
+                'p.id as product_id',
+            ])
+            ->when($status !== 'all', fn($q) => $q->where('rr.status', $status))
+            ->orderByDesc('rr.created_at')
+            ->paginate(20);
+
+        // Build full avatar URLs (same logic as User::getAvatarUrlAttribute)
+        $reports->getCollection()->transform(function ($row) {
+            $row->reporter_avatar_url = $row->reporter_avatar
+                ? (str_starts_with($row->reporter_avatar, 'http') ? $row->reporter_avatar : url('storage/' . $row->reporter_avatar))
+                : null;
+            $row->author_avatar_url = $row->author_avatar
+                ? (str_starts_with($row->author_avatar, 'http') ? $row->author_avatar : url('storage/' . $row->author_avatar))
+                : null;
+            return $row;
+        });
+
+        return response()->json($reports);
+    }
+
+    /** Admin: Take action on a review report (dismiss / remove review) */
+    public function reviewReportAction(Request $request, $reportId)
+    {
+        $request->validate(['action' => 'required|in:dismiss,remove_review']);
+
+        $report = DB::table('review_reports')->where('id', $reportId)->first();
+        if (!$report) return response()->json(['message' => 'Report not found.'], 404);
+
+        if ($request->action === 'remove_review') {
+            // Hide the review and mark all its reports as reviewed
+            DB::table('reviews')->where('id', $report->review_id)->update(['is_visible' => false]);
+            DB::table('review_reports')->where('review_id', $report->review_id)->update(['status' => 'reviewed', 'updated_at' => now()]);
+        } else {
+            // Dismiss — just update status
+            DB::table('review_reports')->where('id', $reportId)->update(['status' => 'dismissed', 'updated_at' => now()]);
+        }
+
+        return response()->json(['message' => $request->action === 'remove_review' ? 'Review removed.' : 'Report dismissed.']);
+    }
 }
+

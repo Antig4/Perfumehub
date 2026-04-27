@@ -59,4 +59,37 @@ class ReportController extends Controller
 
         return response()->json(compact('monthlySales', 'topProducts', 'totalRevenue'));
     }
+
+    /** Export orders as CSV for admin */
+    public function exportOrdersCsv(Request $request)
+    {
+        $from = $request->from ? date('Y-m-d', strtotime($request->from)) : now()->subMonths(12)->toDateString();
+        $to = $request->to ? date('Y-m-d', strtotime($request->to)) : now()->toDateString();
+
+        $orders = Order::with(['user', 'items'])
+            ->whereBetween('created_at', [$from . ' 00:00:00', $to . ' 23:59:59'])
+            ->orderByDesc('created_at')
+            ->get();
+
+        $csv = "Order Number,Customer,Email,Status,Payment Method,Payment Status,Subtotal,Shipping,Total,Date\n";
+        foreach ($orders as $o) {
+            $csv .= implode(',', [
+                $o->order_number,
+                '"' . str_replace('"', '""', $o->user->name ?? '') . '"',
+                $o->user->email ?? '',
+                $o->status,
+                $o->payment_method,
+                $o->payment_status,
+                $o->subtotal,
+                $o->shipping_fee,
+                $o->total,
+                $o->created_at->format('Y-m-d H:i'),
+            ]) . "\n";
+        }
+
+        return response($csv, 200, [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => 'attachment; filename="orders_report_' . $from . '_to_' . $to . '.csv"',
+        ]);
+    }
 }

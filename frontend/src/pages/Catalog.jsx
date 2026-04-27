@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuthStore } from '../stores/authStore';
 import ProductCard from '../components/ProductCard';
@@ -11,11 +12,13 @@ export default function Catalog() {
   const [brands, setBrands] = useState([]);
   const { isAuthenticated } = useAuthStore();
   
+  const [searchParams, setSearchParams] = useSearchParams();
+  
   const [filters, setFilters] = useState({
-    category_id: '',
-    brand_id: '',
-    gender: '',
-    sort: 'newest'
+    category_id: searchParams.get('category_id') || '',
+    brand_id: searchParams.get('brand_id') || '',
+    gender: searchParams.get('gender') || '',
+    sort: searchParams.get('sort') || 'newest'
   });
 
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -75,7 +78,17 @@ export default function Catalog() {
   }, [filters]);
 
   const handleFilterChange = (key, value) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
+    const newFilters = { ...filters, [key]: value };
+    setFilters(newFilters);
+    
+    // Update URL
+    const newParams = new URLSearchParams(searchParams);
+    if (!value) {
+      newParams.delete(key);
+    } else {
+      newParams.set(key, value);
+    }
+    setSearchParams(newParams);
   };
 
   return (
@@ -98,7 +111,7 @@ export default function Catalog() {
             <select 
               className="input-field appearance-none pr-10"
               value={filters.sort}
-              onChange={(e) => setFilters(prev => ({ ...prev, sort: e.target.value }))}
+              onChange={(e) => handleFilterChange('sort', e.target.value)}
             >
               <option value="newest">Newest Arrivals</option>
               <option value="popular">Most Popular</option>
@@ -150,6 +163,23 @@ export default function Catalog() {
                 </div>
               </div>
 
+              {/* Brands */}
+              <div>
+                <h3 className="text-primary-400 text-sm font-semibold uppercase tracking-wider mb-3">Brands</h3>
+                <div className="space-y-2 max-h-60 overflow-y-auto pr-2 custom-scrollbar">
+                  <label className="flex items-center gap-3 cursor-pointer text-gray-300 hover:text-white transition">
+                    <input type="radio" name="brand" checked={filters.brand_id === ''} onChange={() => handleFilterChange('brand_id', '')} className="accent-primary-500 w-4 h-4" />
+                    All Brands
+                  </label>
+                  {(Array.isArray(brands) ? brands : []).map(b => (
+                    <label key={b.id} className="flex items-center gap-3 cursor-pointer text-gray-300 hover:text-white transition">
+                      <input type="radio" name="brand" checked={String(filters.brand_id) === String(b.id)} onChange={() => handleFilterChange('brand_id', b.id)} className="accent-primary-500 w-4 h-4" />
+                      {b.name}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
             </div>
           </div>
         </div>
@@ -175,7 +205,10 @@ export default function Catalog() {
               <div className="col-span-full text-center py-24 glass-card">
                 <h3 className="text-xl text-gray-300 mb-2">No fragrances found</h3>
                 <p className="text-gray-500">Try adjusting your filters to see more results.</p>
-                <button onClick={() => setFilters({category_id: '', brand_id: '', gender: '', sort: 'newest'})} className="mt-4 text-primary-400 font-medium">Clear Filters</button>
+                <button onClick={() => {
+                  setFilters({category_id: '', brand_id: '', gender: '', sort: 'newest'});
+                  setSearchParams({});
+                }} className="mt-4 text-primary-400 font-medium">Clear Filters</button>
               </div>
             ))}
           </div>

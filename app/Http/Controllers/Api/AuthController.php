@@ -52,7 +52,12 @@ class AuthController extends Controller
         }
 
         if ($user->role === 'rider') {
-            RiderProfile::create(['user_id' => $user->id]);
+            RiderProfile::create([
+                'user_id'       => $user->id,
+                'vehicle_type'  => $request->vehicle_type ?? 'Motorcycle',
+                'vehicle_plate' => $request->vehicle_plate,
+                'is_available'  => true,
+            ]);
         }
 
         $token = $user->createToken('auth_token')->plainTextToken;

@@ -83,7 +83,7 @@ export default function Cart() {
             <div key={item.id} className="glass-card p-4 sm:p-6 flex flex-col sm:flex-row gap-6 items-center">
               <Link to={`/products/${item.product_id}`} className="w-24 h-32 shrink-0 bg-navy-950 rounded-lg overflow-hidden">
                 <img 
-                  src={item.product?.primary_image?.image_path || 'https://via.placeholder.com/150'} 
+                  src={item.product?.primary_image?.image_url || 'https://placehold.co/150x200/1a1a2e/d4af37?text=Perfume'} 
                   alt={item.product?.name} 
                   className="w-full h-full object-cover" 
                 />

@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuthStore } from '../stores/authStore';
 import StarRating from '../components/StarRating';
-import { ShoppingCart, Heart, ShieldCheck, Truck, ArrowLeft, Zap } from 'lucide-react';
+import ReviewsSection from '../components/ReviewsSection';
+import { ShoppingCart, Heart, ShieldCheck, Truck, ArrowLeft, Zap, Store, Star } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function ProductDetail() {
@@ -118,18 +119,24 @@ export default function ProductDetail() {
 
   if (loading || !product) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-12 animate-pulse flex flex-col md:flex-row gap-12">
-        <div className="md:w-1/2 h-[600px] bg-navy-900 rounded-2xl"></div>
-        <div className="md:w-1/2 space-y-6">
-          <div className="h-8 bg-navy-900 rounded w-1/4"></div>
-          <div className="h-12 bg-navy-900 rounded w-3/4"></div>
-          <div className="h-24 bg-navy-900 rounded w-full"></div>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 animate-pulse">
+        <div className="h-4 bg-navy-900 rounded w-20 mb-8"></div>
+        <div className="flex flex-col md:flex-row gap-12 lg:gap-20">
+          <div className="md:w-1/2 aspect-[4/5] bg-navy-900 rounded-2xl"></div>
+          <div className="md:w-1/2 space-y-6 pt-4">
+            <div className="h-4 bg-navy-900 rounded w-1/4"></div>
+            <div className="h-12 bg-navy-900 rounded w-3/4"></div>
+            <div className="h-6 bg-navy-900 rounded w-1/3"></div>
+            <div className="h-8 bg-navy-900 rounded w-1/4 mt-8"></div>
+            <div className="h-32 bg-navy-900 rounded w-full mt-8"></div>
+            <div className="h-12 bg-navy-900 rounded w-full mt-12"></div>
+          </div>
         </div>
       </div>
     );
   }
 
-  const primaryImage = product.primary_image?.image_path || 'https://via.placeholder.com/600x800';
+  const primaryImage = product.primary_image?.image_url || product.images?.[0]?.image_url || 'https://placehold.co/600x800/1a1a2e/d4af37?text=PerfumeHub';
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -153,7 +160,7 @@ export default function ProductDetail() {
 
       <div className="flex flex-col md:flex-row gap-12 lg:gap-20">
         {/* Images */}
-        <div className="md:w-1/3 relative bg-navy-900 rounded-2xl overflow-hidden aspect-[3/4]">
+        <div className="md:w-1/2 relative bg-navy-900 rounded-2xl overflow-hidden aspect-[4/5] shadow-2xl">
           <img 
             src={primaryImage} 
             alt={product.name} 
@@ -162,7 +169,7 @@ export default function ProductDetail() {
         </div>
 
         {/* Info */}
-        <div className="md:w-2/3 flex flex-col pt-4">
+        <div className="md:w-1/2 flex flex-col pt-4">
           <div className="mb-2 text-primary-400 font-semibold uppercase tracking-widest text-sm">
             {product.brand?.name}
           </div>
@@ -195,99 +202,143 @@ export default function ProductDetail() {
             </div>
           </div>
 
-          {/* Actions */}
-          <div className="flex items-end gap-6 mb-8 mt-auto">
-            <div>
-              <p className="text-gray-400 text-sm mb-2">Quantity</p>
-              <div className="inline-flex items-center border border-white/10 rounded overflow-hidden">
-                <button type="button" aria-label="Decrease quantity" onClick={() => setQuantity(prev => {
-                  const v = Number(prev) || 1; return Math.max(1, v - 1);
-                })} className="px-3 py-2 bg-navy-900 hover:bg-navy-800 disabled:opacity-50" disabled={Number(quantity) <= 1}>
-                  -
+          {/* ── Action buttons (redesigned) ─────────────────── */}
+          <div className="flex flex-col gap-4 mb-8 mt-auto">
+            {/* Quantity row */}
+            <div className="flex items-center gap-3">
+              <span className="text-gray-400 text-sm">Qty</span>
+              <div className="inline-flex items-center rounded-xl border border-white/15 bg-navy-950/60 overflow-hidden">
+                <button
+                  type="button"
+                  aria-label="Decrease quantity"
+                  onClick={() => setQuantity(prev => Math.max(1, (Number(prev) || 1) - 1))}
+                  disabled={Number(quantity) <= 1}
+                  className="w-10 h-10 flex items-center justify-center text-lg font-light text-gray-300 hover:bg-white/5 disabled:opacity-40 transition"
+                >
+                  −
                 </button>
                 <input
-                  type="number"
-                  min={1}
-                  max={product.stock || 9999}
+                  type="number" min={1} max={product.stock || 9999}
                   value={quantity}
-                  onChange={(e) => {
+                  onChange={e => {
                     const raw = e.target.value;
-                    // Allow empty string while typing (user can erase to type multi-digit)
                     if (raw === '') { setQuantity(''); return; }
                     let v = parseInt(raw, 10);
                     if (!Number.isFinite(v) || v <= 0) v = 1;
-                    const max = product.stock || 9999;
-                    if (v > max) v = max;
-                    setQuantity(v);
+                    setQuantity(Math.min(v, product.stock || 9999));
                   }}
-                  onBlur={() => {
-                    // Normalize empty input to 1 on blur
-                    if (quantity === '' || quantity === null || typeof quantity === 'undefined') setQuantity(1);
-                    else {
-                      let v = Number(quantity) || 1;
-                      const max = product.stock || 9999;
-                      if (v < 1) v = 1;
-                      if (v > max) v = max;
-                      setQuantity(v);
-                    }
-                  }}
-                  className="w-20 text-lg text-center font-bold bg-transparent outline-none p-2 no-spin"
-                  style={{ MozAppearance: 'textfield', WebkitAppearance: 'none', appearance: 'textfield' }}
+                  onBlur={() => setQuantity(Math.max(1, Number(quantity) || 1))}
+                  className="w-14 text-center font-bold text-white bg-transparent outline-none no-spin text-base"
+                  style={{ MozAppearance: 'textfield', WebkitAppearance: 'none' }}
                 />
-                <button type="button" aria-label="Increase quantity" onClick={() => setQuantity(prev => {
-                  const cur = Number(prev) || 0;
-                  const next = cur + 1;
-                  return product.stock ? Math.min(next, product.stock) : next;
-                })} className="px-3 py-2 bg-navy-900 hover:bg-navy-800 disabled:opacity-50" disabled={product.stock ? Number(quantity) >= product.stock : false}>
+                <button
+                  type="button"
+                  aria-label="Increase quantity"
+                  onClick={() => setQuantity(prev => {
+                    const cur = Number(prev) || 0;
+                    return product.stock ? Math.min(cur + 1, product.stock) : cur + 1;
+                  })}
+                  disabled={product.stock ? Number(quantity) >= product.stock : false}
+                  className="w-10 h-10 flex items-center justify-center text-lg font-light text-gray-300 hover:bg-white/5 disabled:opacity-40 transition"
+                >
                   +
                 </button>
               </div>
               {product.stock !== undefined && (
-                <div className="text-xs text-gray-500 mt-1">Available: {product.stock}</div>
+                <span className="text-xs text-gray-500">{product.stock} in stock</span>
               )}
             </div>
-            
-            <button 
-              onClick={handleAddToCart}
-              disabled={addingToCart || product.stock < 1 || (product.stock && quantity > product.stock)}
-              className="btn-outline w-36 py-3 text-base flex items-center justify-center whitespace-nowrap"
-              title="Add to cart (continue shopping)"
-              aria-label="Add to cart"
-            >
-              <ShoppingCart className="w-5 h-5 mr-2" />
-              {product.stock < 1 ? 'Out of Stock' : addingToCart ? 'Adding...' : 'Add to Cart'}
-            </button>
-            <button onClick={handleBuyNow} disabled={buyingNow || product.stock < 1 || (product.stock && quantity > product.stock)} className="w-44 py-4 text-lg flex items-center justify-center whitespace-nowrap ml-2 rounded-md shadow-lg transition disabled:opacity-60 bg-amber-400 hover:bg-amber-300 text-navy-900 px-5" title="Buy Now — add to cart and go straight to checkout" aria-label="Buy now">
-              {buyingNow ? 'Processing...' : (<><Zap className="w-6 h-6 mr-3 text-navy-900" />Buy Now</>)}
-            </button>
+
+            {/* CTA buttons */}
+            <div className="flex items-center gap-3">
+              {/* Add to Cart — glass pill */}
+              <button
+                onClick={handleAddToCart}
+                disabled={addingToCart || product.stock < 1 || (product.stock && quantity > product.stock)}
+                aria-label="Add to cart"
+                className="flex-1 flex items-center justify-center gap-2.5 h-13 py-3.5 rounded-2xl border border-primary-500/60 bg-primary-500/10 text-primary-300 font-semibold text-sm hover:bg-primary-500/20 hover:border-primary-400 hover:text-white transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <ShoppingCart className="w-4.5 h-4.5" />
+                {product.stock < 1 ? 'Out of Stock' : addingToCart ? 'Adding…' : 'Add to Cart'}
+              </button>
+
+              {/* Buy Now — solid gradient pill */}
+              <button
+                onClick={handleBuyNow}
+                disabled={buyingNow || product.stock < 1 || (product.stock && quantity > product.stock)}
+                aria-label="Buy now"
+                className="flex-1 flex items-center justify-center gap-2.5 h-13 py-3.5 rounded-2xl bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-400 hover:to-primary-500 text-white font-bold text-sm shadow-lg shadow-primary-500/25 hover:shadow-primary-400/40 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Zap className="w-4.5 h-4.5" />
+                {buyingNow ? 'Processing…' : 'Buy Now'}
+              </button>
+
+              {/* Wishlist heart */}
+              <button
+                onClick={toggleWishlist}
+                title="Add to Wishlist"
+                className={`w-12 h-12 flex items-center justify-center rounded-2xl border transition-all duration-200 ${
+                  inWishlist
+                    ? 'border-red-500/50 bg-red-500/15 text-red-400'
+                    : 'border-white/15 bg-navy-950/60 text-gray-400 hover:border-red-500/40 hover:text-red-400'
+                }`}
+              >
+                <Heart className={`w-5 h-5 transition-all ${inWishlist ? 'fill-red-400' : ''}`} />
+              </button>
+            </div>
 
             {product.stock && quantity > product.stock && (
-              <div className="text-sm text-yellow-400 mt-2">Selected quantity exceeds available stock.</div>
+              <p className="text-xs text-yellow-400">Selected quantity exceeds available stock.</p>
             )}
-
-            <button 
-              onClick={toggleWishlist}
-              className="btn-outline px-4 py-3 aspect-square flex items-center justify-center"
-              title="Add to Wishlist"
-            >
-              <Heart className={`w-5 h-5 transition-colors ${inWishlist ? 'text-red-400' : 'text-white'}`} />
-            </button>
           </div>
 
           {/* Trust Badges */}
-          <div className="space-y-4 pt-6 border-t border-white/10">
-            <div className="flex items-center gap-3 text-gray-400">
-              <ShieldCheck className="w-5 h-5 text-primary-500" />
+          <div className="space-y-3 pt-6 border-t border-white/10 mb-6">
+            <div className="flex items-center gap-3 text-gray-400 text-sm">
+              <ShieldCheck className="w-4.5 h-4.5 text-primary-500 shrink-0" />
               <span>100% Authentic sourced directly from verified sellers</span>
             </div>
-            <div className="flex items-center gap-3 text-gray-400">
-              <Truck className="w-5 h-5 text-primary-500" />
+            <div className="flex items-center gap-3 text-gray-400 text-sm">
+              <Truck className="w-4.5 h-4.5 text-primary-500 shrink-0" />
               <span>Nationwide secured delivery (3-5 days)</span>
             </div>
           </div>
 
-        </div>
-      </div>
+          {/* ── Seller / Store card ────────────────────────── */}
+          {product.seller && (
+            <div className="flex items-center gap-4 p-4 rounded-2xl border border-white/10 bg-navy-950/50 hover:border-primary-500/30 hover:bg-navy-950/70 transition group">
+              {/* Store avatar */}
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary-600 to-primary-800 flex items-center justify-center shrink-0 shadow-lg">
+                <Store className="w-6 h-6 text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] text-gray-500 uppercase tracking-widest mb-0.5">Sold by</p>
+                <p className="text-white font-semibold text-sm leading-tight truncate">
+                  {product.seller?.seller_profile?.store_name || product.seller?.name || 'PerfumeHub Store'}
+                </p>
+                {product.seller?.seller_profile?.rating && (
+                  <div className="flex items-center gap-1 mt-1">
+                    <Star className="w-3 h-3 text-primary-400 fill-primary-400" />
+                    <span className="text-xs text-gray-400">
+                      {Number(product.seller.seller_profile.rating).toFixed(1)}
+                      {product.seller.seller_profile.total_sales > 0 && (
+                        <span className="ml-1 text-gray-600">· {product.seller.seller_profile.total_sales} sales</span>
+                      )}
+                    </span>
+                  </div>
+                )}
+              </div>
+              <div className="text-xs text-primary-400 group-hover:text-primary-300 font-medium shrink-0">
+                ✓ Verified
+              </div>
+            </div>
+          )}
+        </div>{/* end md:w-2/3 info column */}
+      </div>{/* end flex row */}
+
+      {/* Customer Reviews Section */}
+      <ReviewsSection productId={product.id} />
+
     </div>
   );
 }

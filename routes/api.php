@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\RiderDashboardController;
 use App\Http\Controllers\Api\AdminDashboardController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\SettingsController;
+use App\Http\Controllers\Api\VerificationController;
 
 // ─── Public Routes ────────────────────────────────────────────
 Route::post('/register', [AuthController::class, 'register']);
@@ -79,11 +80,18 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Reviews
         Route::post('/reviews', [ReviewController::class, 'store']);
+        Route::get('/products/{product}/can-review', [ReviewController::class, 'canReview']);
+        Route::post('/reviews/{review}/like', [ReviewController::class, 'toggleLike']);
+        Route::post('/reviews/{review}/report', [ReviewController::class, 'report']);
 
         // Payment
         Route::post('/payment/intent',  [PaymentController::class, 'createIntent']);
         Route::post('/payment/attach',  [PaymentController::class, 'attachMethod']);
     });
+
+    // Verification status (self) - accessible to any authenticated user
+    Route::get('/verification/seller-status', [VerificationController::class, 'mySellerStatus']);
+    Route::get('/verification/rider-status',  [VerificationController::class, 'myRiderStatus']);
 
     // ─── Seller ─────────────────────────────────────────────────
     Route::middleware('role:seller')->group(function () {
@@ -94,12 +102,25 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Products – seller can CRUD their own
         Route::post('/products',                 [ProductController::class, 'store']);
-        Route::put('/products/{product}',        [ProductController::class, 'update']);
+        Route::put('/products/{product}', [ProductController::class, 'update']);
         Route::delete('/products/{product}',     [ProductController::class, 'destroy']);
         Route::delete('/product-images/{image}', [ProductController::class, 'deleteImage']);
+        Route::put('/product-images/{image}/set-primary', [ProductController::class, 'setPrimaryImage']);
 
         // Seller reports
         Route::get('/seller/report', [ReportController::class, 'sellerReport']);
+
+        // Rider Management — seller can manage their assigned riders
+        Route::get('/seller/riders', [SellerDashboardController::class, 'riders']);
+        Route::get('/seller/available-riders', [SellerDashboardController::class, 'availableRiders']);
+        Route::post('/seller/riders/{user}/assign', [SellerDashboardController::class, 'assignRider']);
+        Route::post('/seller/riders/{user}/unassign', [SellerDashboardController::class, 'unassignRider']);
+
+        // Assign a specific rider to a specific order delivery
+        Route::post('/seller/orders/{order}/assign-rider', [SellerDashboardController::class, 'assignRiderToOrder']);
+
+        // Seller verification — upload business permit
+        Route::post('/verification/seller/upload', [VerificationController::class, 'uploadSellerDocument']);
     });
 
     // ─── Rider ─────────────────────────────────────────────────
@@ -107,6 +128,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/rider/dashboard',         [RiderDashboardController::class, 'dashboard']);
         Route::get('/rider/deliveries',        [DeliveryController::class, 'myDeliveries']);
         Route::put('/rider/deliveries/{delivery}/status', [DeliveryController::class, 'updateStatus']);
+        Route::post('/rider/toggle-availability', [RiderDashboardController::class, 'toggleAvailability']);
+
+        // Rider verification — upload driving license
+        Route::post('/verification/rider/upload', [VerificationController::class, 'uploadRiderDocument']);
     });
 
     // ─── Admin ─────────────────────────────────────────────────
@@ -140,6 +165,15 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Reports
         Route::get('/admin/reports/sales', [ReportController::class, 'adminSales']);
+        Route::get('/admin/reports/export-csv', [ReportController::class, 'exportOrdersCsv']);
+
+        // Review Reports (moderation)
+        Route::get('/admin/review-reports', [AdminDashboardController::class, 'reviewReports']);
+        Route::post('/admin/review-reports/{reportId}/action', [AdminDashboardController::class, 'reviewReportAction']);
+
+        // Verifications (admin)
+        Route::get('/admin/verifications',                           [VerificationController::class, 'adminList']);
+        Route::post('/admin/verifications/{kind}/{profileId}/action', [VerificationController::class, 'adminAction']);
 
         // Settings
         Route::get('/settings',  [SettingsController::class, 'index']);

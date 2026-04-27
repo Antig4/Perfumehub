@@ -13,6 +13,12 @@ export default defineConfig({
           Accept: 'application/json',
         }
       },
+      // Proxy /storage so uploaded media (review photos/videos) load correctly
+      '/storage': {
+        target: 'http://127.0.0.1:8000',
+        changeOrigin: true,
+      },
     }
   }
 })
+

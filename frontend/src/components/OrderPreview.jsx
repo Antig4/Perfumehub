@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import Modal from './Modal';
-import LoadingSpinner from './LoadingSpinner';
+
 
 export default function OrderPreview({ orderId, open, onClose }) {
   const [order, setOrder] = useState(null);
@@ -31,7 +31,7 @@ export default function OrderPreview({ orderId, open, onClose }) {
   return (
     <Modal open={open} title={`Order #${order?.order_number ?? order?.id ?? orderId}`} onClose={onClose}>
       {loading ? (
-        <div className="py-8 text-center"><LoadingSpinner size={1.25} /></div>
+        <div className="py-8 text-center text-gray-400">Loading order...</div>
       ) : !order ? (
         <div className="py-6 text-center text-gray-400">Order details not available.</div>
       ) : (

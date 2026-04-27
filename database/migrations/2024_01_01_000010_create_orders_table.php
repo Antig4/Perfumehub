@@ -17,7 +17,7 @@ class CreateOrdersTable extends Migration
             $table->decimal('total', 10, 2);
             $table->enum('status', ['pending', 'confirmed', 'packed', 'out_for_delivery', 'delivered', 'cancelled', 'refunded'])->default('pending');
             $table->enum('payment_status', ['pending', 'paid', 'failed', 'refunded'])->default('pending');
-            $table->enum('payment_method', ['gcash', 'card'])->default('card');
+            $table->string('payment_method', 20)->default('cod');
             $table->string('paymongo_payment_intent_id')->nullable();
             $table->text('shipping_address');
             $table->string('contact_phone', 20)->nullable();

@@ -84,7 +84,7 @@ class OrderController extends Controller
         $request->validate([
             'shipping_address' => 'required|string',
             'contact_phone'    => 'required|string',
-            'payment_method'   => 'required|in:gcash,card',
+            'payment_method'   => 'required|in:cod,gcash,card',
             'notes'            => 'nullable|string',
         ]);
 
@@ -110,6 +110,10 @@ class OrderController extends Controller
             $shipping = 100; // flat rate
             $total    = $subtotal + $shipping;
 
+            // For online payments (gcash/card), payment is collected upfront.
+            // For COD, payment is collected on delivery by the rider.
+            $paymentStatus = in_array($request->payment_method, ['gcash', 'card']) ? 'paid' : 'pending';
+
             $order = Order::create([
                 'order_number'     => 'PH-' . strtoupper(Str::random(8)),
                 'user_id'          => $user->id,
@@ -117,6 +121,7 @@ class OrderController extends Controller
                 'shipping_fee'     => $shipping,
                 'total'            => $total,
                 'payment_method'   => $request->payment_method,
+                'payment_status'   => $paymentStatus,
                 'shipping_address' => $request->shipping_address,
                 'contact_phone'    => $request->contact_phone,
                 'notes'            => $request->notes,
@@ -147,15 +152,50 @@ class OrderController extends Controller
                 ];
             }
 
+            // Try to auto-assign a rider if the seller has an available one
+            $primarySellerId = collect($sellerItems)->keys()->first();
+            $assignedRiderId = null;
+
+            if ($primarySellerId) {
+                // Find an available rider assigned to this seller
+                $availableRider = \App\Models\RiderProfile::where('seller_id', $primarySellerId)
+                    ->where('is_available', true)
+                    ->first();
+                
+                if ($availableRider) {
+                    $assignedRiderId = $availableRider->user_id;
+                    $availableRider->update(['is_available' => false]);
+                }
+            }
+
             // Create delivery record (include optional lat/lng if customer provided via map picker)
-            Delivery::create([
+            $delivery = Delivery::create([
                 'order_id'         => $order->id,
+                'rider_id'         => $assignedRiderId,
+                'status'           => $assignedRiderId ? 'assigned' : 'pending',
                 'delivery_address' => $request->shipping_address,
                 'recipient_name'   => $user->name,
                 'recipient_phone'  => $request->contact_phone,
                 'lat'              => $request->input('lat'),
                 'lng'              => $request->input('lng'),
+                'assigned_at'      => $assignedRiderId ? now() : null,
             ]);
+
+            // Notify the assigned rider
+            if ($assignedRiderId) {
+                Notification::create([
+                    'user_id' => $assignedRiderId,
+                    'type'    => 'delivery_assigned',
+                    'title'   => 'New Delivery Assigned',
+                    'message' => "Order #{$order->order_number} has been assigned to you.",
+                    'data'    => [
+                        'delivery_id' => $delivery->id,
+                        'order_id'    => $delivery->order_id,
+                        'items'       => $orderItemData ?? [],
+                        'delivery_status' => $delivery->status,
+                    ],
+                ]);
+            }
 
             // Clear cart
             $cart->items()->delete();

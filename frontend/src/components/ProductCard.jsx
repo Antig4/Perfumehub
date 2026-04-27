@@ -9,7 +9,7 @@ import React from 'react';
 function ProductCard({ product }) {
   // product may be null for skeleton placeholders
   const isSkeleton = !product;
-  const isHot = !isSkeleton && (product.sales_count > 100 || product.is_featured);
+  const isHot = !isSkeleton && !!product.is_trending;
   const { isAuthenticated } = useAuthStore();
   const [liked, setLiked] = useState(!!(product && product.in_wishlist));
   const [toggling, setToggling] = useState(false);
@@ -81,7 +81,7 @@ function ProductCard({ product }) {
             <div className="w-full h-full bg-navy-900 animate-pulse" />
           ) : (
             <img
-              src={product.primaryImage?.image_path || product.primary_image?.image_path || 'https://via.placeholder.com/400x500?text=No+Image'}
+              src={product.primaryImage?.image_url || product.primary_image?.image_url || 'https://placehold.co/400x500/1a1a2e/d4af37?text=PerfumeHub'}
               alt={product.name}
               className="w-full h-full object-cover opacity-90"
               loading="lazy"

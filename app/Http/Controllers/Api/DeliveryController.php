@@ -113,6 +113,23 @@ class DeliveryController extends Controller
         }
 
         if ($request->status === 'delivered') {
+            $order = $delivery->order;
+            
+            // For COD orders: rider has collected the cash — mark payment as paid
+            if ($order->payment_method === 'cod') {
+                $order->update(['payment_status' => 'paid']);
+
+                // Notify the customer that payment was received
+                Notification::create([
+                    'user_id' => $order->user_id,
+                    'type'    => 'payment_received',
+                    'title'   => 'Payment Received',
+                    'message' => "Your cash payment of ₱{$order->total} for order #{$order->order_number} has been collected by the rider.",
+                    'data'    => ['order_id' => $order->id],
+                ]);
+            }
+            
+
             $riderProfile = $request->user()->riderProfile;
             if ($riderProfile) {
                 $riderProfile->increment('total_deliveries');

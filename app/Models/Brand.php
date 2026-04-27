@@ -8,6 +8,8 @@ class Brand extends Model
 {
     protected $fillable = ['name', 'slug', 'logo', 'description', 'country_of_origin', 'is_active'];
 
+    protected $appends = ['logo_url'];
+
     public function products() { return $this->hasMany(Product::class); }
 
     public function getLogoUrlAttribute(): ?string

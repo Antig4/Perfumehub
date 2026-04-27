@@ -26,13 +26,15 @@ class UserController extends Controller
             'name'    => 'sometimes|string|max:255',
             'phone'   => 'sometimes|nullable|string|max:20',
             'address' => 'sometimes|nullable|string',
+            'lat'     => 'sometimes|nullable|numeric',
+            'lng'     => 'sometimes|nullable|numeric',
         ]);
 
         if ($validator->fails()) {
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $user->update($request->only(['name', 'phone', 'address']));
+        $user->update($request->only(['name', 'phone', 'address', 'lat', 'lng']));
 
         return response()->json(['user' => $user->fresh(), 'message' => 'Profile updated.']);
     }
