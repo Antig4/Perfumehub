@@ -37,14 +37,14 @@ export default function OrderPreview({ orderId, open, onClose }) {
       ) : (
         <div className="space-y-4">
           <div className="text-sm text-gray-400">Customer: <span className="text-white">{order.user?.name || order.customer_name || '—'}</span></div>
-          <div className="text-sm text-gray-400">Total: <span className="text-white">₦{Number(order.total).toLocaleString()}</span></div>
+          <div className="text-sm text-gray-400">Total: <span className="text-white">₱{Number(order.total).toLocaleString()}</span></div>
           <div className="pt-2">
             <h4 className="text-xs text-primary-400 mb-2">Items</h4>
             <div className="space-y-2">
               {order.items?.map(i => (
                 <div key={i.id} className="flex justify-between text-sm text-gray-300">
                   <div>{i.product_name || i.name} x{i.quantity}</div>
-                  <div>₦{Number(i.price ?? i.unit_price ?? 0).toLocaleString()}</div>
+                  <div>₱{Number(i.price ?? i.unit_price ?? 0).toLocaleString()}</div>
                 </div>
               ))}
             </div>

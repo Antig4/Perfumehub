@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuthStore } from '../stores/authStore';
@@ -18,6 +18,51 @@ export default function ProductDetail() {
   const [buyingNow, setBuyingNow] = useState(false);
   const [inWishlist, setInWishlist] = useState(false);
   const [togglingWishlist, setTogglingWishlist] = useState(false);
+  const productImgRef = useRef(null);
+
+  const triggerFlyAnimation = () => {
+    if (!productImgRef.current) return;
+    
+    const cart = document.getElementById('navbar-cart-icon');
+    if (!cart) return;
+
+    const img = productImgRef.current;
+    const rect = img.getBoundingClientRect();
+    const cartRect = cart.getBoundingClientRect();
+
+    // Create a clone
+    const clone = img.cloneNode();
+    clone.style.position = 'fixed';
+    clone.style.top = rect.top + 'px';
+    clone.style.left = rect.left + 'px';
+    clone.style.width = rect.width + 'px';
+    clone.style.height = rect.height + 'px';
+    clone.style.zIndex = '1000';
+    clone.style.transition = 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)';
+    clone.style.borderRadius = '1rem';
+    clone.style.pointerEvents = 'none';
+    clone.style.boxShadow = '0 20px 50px rgba(0,0,0,0.3)';
+
+    document.body.appendChild(clone);
+
+    // Trigger animation
+    setTimeout(() => {
+      clone.style.top = (cartRect.top + cartRect.height / 2) + 'px';
+      clone.style.left = (cartRect.left + cartRect.width / 2) + 'px';
+      clone.style.width = '20px';
+      clone.style.height = '20px';
+      clone.style.opacity = '0';
+      clone.style.transform = 'translate(-50%, -50%) scale(0.1)';
+    }, 10);
+
+    // Cleanup
+    setTimeout(() => {
+      document.body.removeChild(clone);
+      // Small bounce effect on cart
+      cart.classList.add('scale-110');
+      setTimeout(() => cart.classList.remove('scale-110'), 200);
+    }, 800);
+  };
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -64,6 +109,7 @@ export default function ProductDetail() {
     try {
       const qty = Number(quantity) || 1;
       await api.post('/cart', { product_id: product.id, quantity: qty });
+      triggerFlyAnimation();
       toast.success('Added to cart');
       try { window.dispatchEvent(new CustomEvent('cart:updated', { detail: { delta: qty } })); } catch (e) {}
     } catch (e) {
@@ -162,6 +208,7 @@ export default function ProductDetail() {
         {/* Images */}
         <div className="md:w-1/2 relative bg-navy-900 rounded-2xl overflow-hidden aspect-[4/5] shadow-2xl">
           <img 
+            ref={productImgRef}
             src={primaryImage} 
             alt={product.name} 
             className="w-full h-full object-cover"

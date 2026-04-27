@@ -1,11 +1,11 @@
+import { useState, useEffect, useRef } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 import { useNotificationStore } from '../stores/notificationStore';
-import { ShoppingBag, ShoppingCart, Search, Menu, User, LogOut, Heart, Bell } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
+import { ShoppingBag, ShoppingCart, Search, Menu, User, LogOut, Heart, Bell, Check, Clock, Package, Truck, AlertCircle } from 'lucide-react';
+import api from '../api/axios';
 
 import OrderPreview from './OrderPreview';
-import api from '../api/axios';
 import toast from 'react-hot-toast';
 
 export default function Navbar() {
@@ -18,11 +18,18 @@ export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const notifRef = useRef();
-  const [acceptLoading, setAcceptLoading] = useState({});
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewOrderId, setPreviewOrderId] = useState(null);
   const [deliveryStatusMap, setDeliveryStatusMap] = useState({});
+
+  // Live Search State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+  const searchRef = useRef(null);
   const [fetchingStatus, setFetchingStatus] = useState({});
+  const [acceptLoading, setAcceptLoading] = useState({});
 
   // We used to fetch individual order status during render which caused many
   // concurrent requests and triggered backend rate limits (429). Instead
@@ -112,6 +119,48 @@ export default function Navbar() {
     logout();
     navigate('/');
   };
+
+  const handleSearchSubmit = (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/catalog?search=${encodeURIComponent(searchQuery)}`);
+      setSearchQuery('');
+      setIsSearchFocused(false);
+    }
+  };
+
+  // Close search on click outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (searchRef.current && !searchRef.current.contains(e.target)) {
+        setIsSearchFocused(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Live Search Debounce
+  useEffect(() => {
+    if (searchQuery.trim().length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const { data } = await api.get(`/products?search=${encodeURIComponent(searchQuery)}&per_page=6`);
+        setSearchResults(data.data || data || []);
+      } catch (err) {
+        console.error('Live search error:', err);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   useEffect(() => {
     // only fetch and start polling if authenticated
@@ -260,7 +309,7 @@ export default function Navbar() {
 
   return (
     <nav className="sticky top-0 z-50 bg-navy-950/80 backdrop-blur-lg border-b border-white/5">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-none mx-auto px-4 sm:px-6 lg:px-12">
         <div className="flex justify-between items-center h-20">
           
           {/* Logo */}
@@ -270,23 +319,92 @@ export default function Navbar() {
             </span>
           </Link>
 
-          {/* Desktop Links */}
-          <div className="hidden md:flex items-center space-x-8">
+          {/* Desktop Links & Search */}
+          <div className="hidden lg:flex items-center flex-1 ml-10 mr-8 gap-8">
             {showPublicLinks && (
               <>
-                <NavLink to="/catalog" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'}>Shop All</NavLink>
-                <NavLink to="/brands" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'}>Brands</NavLink>
-                <NavLink to="/trending" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'}>Trending</NavLink>
+                <div className="flex items-center space-x-6">
+                  <NavLink to="/catalog" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'}>Shop All</NavLink>
+                  <NavLink to="/brands" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'}>Brands</NavLink>
+                  <NavLink to="/trending" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'}>Trending</NavLink>
+                </div>
+
+                {/* Expanded Live Search Bar */}
+                <div className="relative flex-1 max-w-xl" ref={searchRef}>
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                  <input 
+                    type="text" 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onFocus={() => setIsSearchFocused(true)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleSearchSubmit(e); }}
+                    placeholder="Search fragrances, brands, or notes..." 
+                    className="w-full bg-navy-900 border border-white/10 rounded-full py-2.5 pl-11 pr-4 text-sm text-white focus:outline-none focus:border-primary-500 transition-all"
+                  />
+                  
+                  {/* Live Search Dropdown - Solid Background */}
+                  {isSearchFocused && searchQuery.trim().length >= 2 && (
+                    <div className="absolute top-full left-0 right-0 mt-3 bg-navy-950 border border-white/10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden z-[60] animate-in fade-in slide-in-from-top-2 duration-200">
+                      <div className="p-3 border-b border-white/5 bg-navy-900 flex items-center justify-between">
+                        <span className="text-[10px] text-gray-400 uppercase tracking-widest font-bold">Suggestions</span>
+                        {isSearching && <div className="w-3 h-3 border-2 border-primary-500 border-t-transparent rounded-full animate-spin" />}
+                      </div>
+                      
+                      <div className="max-h-[420px] overflow-auto custom-scrollbar">
+                        {searchResults.length > 0 ? (
+                          <div className="py-1">
+                            {searchResults.map(product => (
+                              <button 
+                                key={product.id}
+                                onClick={() => {
+                                  navigate(`/products/${product.id}`);
+                                  setSearchQuery('');
+                                  setIsSearchFocused(false);
+                                }}
+                                className="w-full px-4 py-3 hover:bg-white/[0.03] flex items-center gap-4 text-left transition-colors group"
+                              >
+                                <div className="w-12 h-12 rounded-xl overflow-hidden shrink-0 bg-navy-900 border border-white/5">
+                                  <img 
+                                    src={product.primaryImage?.image_url || product.primary_image?.image_url || 'https://via.placeholder.com/100'} 
+                                    alt={product.name} 
+                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                  />
+                                </div>
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm font-medium text-white truncate group-hover:text-primary-400 transition-colors">{product.name}</p>
+                                  <p className="text-[10px] text-gray-500 uppercase tracking-wider">{product.brand?.name}</p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-sm text-white font-bold">₱{Number(product.price).toLocaleString()}</p>
+                                  <p className="text-[9px] text-gray-500">View Detail →</p>
+                                </div>
+                              </button>
+                            ))}
+                            <button 
+                              onClick={(e) => handleSearchSubmit(e)}
+                              className="w-full py-3 text-center text-xs font-semibold text-primary-400 hover:text-white hover:bg-primary-500/10 transition-all border-t border-white/5"
+                            >
+                              See all results for "{searchQuery}"
+                            </button>
+                          </div>
+                        ) : !isSearching && (
+                          <div className="p-10 text-center">
+                            <Search className="w-8 h-8 text-gray-600 mx-auto mb-3 opacity-20" />
+                            <p className="text-sm text-gray-500">No fragrances found matching "{searchQuery}"</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
               </>
             )}
           </div>
 
           {/* Desktop Right Actions */}
           <div className="hidden md:flex items-center space-x-6 overflow-visible">
-            <button className="text-gray-300 hover:text-white transition group">
-              <Search className="w-5 h-5 group-hover:scale-110 transition-transform" />
-            </button>
-            {isAuthenticated && (
+            {/* Search bar removed from here as it's now in the center */}
+            {isAuthenticated && user?.role !== 'admin' && (
               <div className="relative" ref={notifRef}>
                 <button aria-label={`Notifications, ${ (notifications || []).filter(n => !n.read_at).length } unread`} onClick={() => { if (isAuthenticated) fetch(); setNotifOpen(v => !v); }} className="text-gray-300 hover:text-white transition relative group flex items-center">
                   {/* Icon container: icon will crossfade into text on hover (in-place) */}
@@ -304,18 +422,25 @@ export default function Navbar() {
                   )}
                   {/* (label is now in-place inside the icon container) */}
                 </button>
-                {/* Dropdown */}
+                {/* Professional Dropdown - Solid Background */}
                 {notifOpen && (
-                  <div className="absolute right-0 mt-2 w-80 bg-navy-900 border border-white/5 rounded shadow-lg p-3">
-                      <div className="flex items-center justify-between mb-2">
-                      <h4 className="text-sm text-gray-400">Notifications</h4>
-                      <div className="flex items-center gap-2">
-                        <button onClick={async () => { await useNotificationStore.getState().markAll(); }} className="text-xs text-primary-400 hover:underline">Mark all as read</button>
-                        {useNotificationStore.getState().loading ? <span className="text-xs text-gray-500">Loading...</span> : null}
+                  <div className="absolute right-0 mt-3 w-[380px] bg-navy-950 border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="p-4 border-b border-white/5 bg-navy-900 flex items-center justify-between">
+                      <div>
+                        <h4 className="text-white font-semibold">Notifications</h4>
+                        <p className="text-[10px] text-gray-400 uppercase tracking-widest mt-0.5">Recent Activity</p>
                       </div>
+                      <div className="flex items-center gap-3">
+                        <button 
+                          onClick={async () => { await useNotificationStore.getState().markAll(); }} 
+                          className="text-xs text-primary-400 hover:text-primary-300 transition-colors font-medium"
+                        >
+                          Mark all as read
+                        </button>
                       </div>
-                    <div ref={el => { /* attach scroll listener via closure below */ }} className="space-y-2 max-h-64 overflow-auto" onScroll={async (e) => {
-                      // infinite scroll: when scrolled to bottom, fetch next page and append
+                    </div>
+
+                    <div className="max-h-[450px] overflow-auto custom-scrollbar" onScroll={async (e) => {
                       const el = e.target;
                       if (el.scrollTop + el.clientHeight >= el.scrollHeight - 10) {
                         const store = useNotificationStore.getState();
@@ -324,48 +449,109 @@ export default function Navbar() {
                         }
                       }
                     }}>
-                      {(notifications || []).length === 0 && <div className="text-sm text-gray-500">No notifications</div>}
-                      {notifications.map(n => (
-                        <div key={n.id} className={`p-3 rounded-md border ${n.read_at ? 'border-transparent bg-navy-900/40 opacity-70' : 'border-white/5 bg-navy-950/40 shadow-sm'}`}>
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1">
-                              <div className="font-semibold text-white">{n.title}</div>
-                              <div className="text-xs text-gray-400 mt-1">{n.message}</div>
-                              {n.type === 'delivery_assigned' && n.data?.items && (
-                                <div className="mt-2 text-sm text-gray-300">
-                                  <div className="text-xs text-primary-400 mb-1">Items:</div>
-                                  {n.data.items.map(item => (
-                                    <div key={item.id} className="flex justify-between text-sm border-b border-white/5 py-1">
-                                      <div className="truncate">{item.product_name} x{item.quantity}</div>
-                                      <div className="text-gray-400">#{item.product_id}</div>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                            <div className="flex-shrink-0 text-right">
-                              <div className="text-xs text-gray-400">{new Date(n.created_at).toLocaleString()}</div>
-                              <div className="mt-2 flex flex-col items-end gap-2">
-                                {!n.read_at && <button onClick={async () => { await markRead(n.id); }} className="text-xs text-primary-400">Mark read</button>}
-                                {n.data?.order_id && (
-                                  <button onClick={async () => {
-                                    await markRead(n.id);
-                                    if (user?.role === 'seller') {
-                                      setPreviewOrderId(n.data.order_id);
-                                      setPreviewOpen(true);
-                                    } else {
-                                      navigate(`/orders/${n.data.order_id}`);
-                                    }
-                                  }} className="text-xs text-primary-300">View order</button>
-                                )}
-                                {n.type === 'delivery_assigned' && n.data?.delivery_id && (
-                                  renderDeliveryAction(n)
-                                )}
-                              </div>
-                            </div>
-                          </div>
+                      {(notifications || []).length === 0 ? (
+                        <div className="py-12 text-center">
+                          <Bell className="w-8 h-8 text-gray-600 mx-auto mb-3 opacity-20" />
+                          <p className="text-sm text-gray-500">No notifications yet</p>
                         </div>
-                      ))}
+                      ) : (
+                        <div className="divide-y divide-white/5">
+                          {notifications.map(n => {
+                            const isUnread = !n.read_at;
+                            return (
+                              <div 
+                                key={n.id} 
+                                className={`group p-4 transition-all duration-300 hover:bg-white/[0.03] relative ${isUnread ? 'bg-primary-500/[0.02]' : ''}`}
+                              >
+                                {isUnread && (
+                                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary-500 rounded-r-full" />
+                                )}
+                                
+                                <div className="flex items-start gap-3">
+                                  <div className={`mt-1 w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${
+                                    isUnread ? 'bg-primary-500/20 text-primary-400' : 'bg-white/5 text-gray-500'
+                                  }`}>
+                                    {n.type === 'delivery_assigned' ? <Truck className="w-4 h-4" /> : 
+                                     n.type === 'order_status' ? <Package className="w-4 h-4" /> : 
+                                     <Bell className="w-4 h-4" />}
+                                  </div>
+
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex justify-between items-start gap-2 mb-1">
+                                      <h5 className={`text-sm font-medium truncate ${isUnread ? 'text-white' : 'text-gray-400'}`}>
+                                        {n.title}
+                                      </h5>
+                                      <span className="text-[10px] text-gray-500 whitespace-nowrap mt-0.5">
+                                        {new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                      </span>
+                                    </div>
+                                    
+                                    <p className={`text-xs leading-relaxed mb-3 ${isUnread ? 'text-gray-300' : 'text-gray-500'}`}>
+                                      {n.message}
+                                    </p>
+
+                                    {n.type === 'delivery_assigned' && n.data?.items && (
+                                      <div className="bg-white/5 rounded-lg p-2 mb-3 space-y-1">
+                                        {n.data.items.slice(0, 2).map(item => (
+                                          <div key={item.id} className="flex justify-between text-[10px] text-gray-400">
+                                            <span className="truncate">{item.product_name}</span>
+                                            <span>x{item.quantity}</span>
+                                          </div>
+                                        ))}
+                                        {n.data.items.length > 2 && (
+                                          <div className="text-[10px] text-gray-500 italic">+{n.data.items.length - 2} more items</div>
+                                        )}
+                                      </div>
+                                    )}
+
+                                    <div className="flex items-center gap-3">
+                                      {n.data?.order_id && (
+                                        <button 
+                                          onClick={async (e) => {
+                                            e.stopPropagation();
+                                            await markRead(n.id);
+                                            setNotifOpen(false);
+                                            if (user?.role === 'seller') {
+                                              navigate(`/seller/orders/${n.data.order_id}`);
+                                            } else if (user?.role === 'rider') {
+                                              navigate(`/rider/deliveries`);
+                                            } else {
+                                              navigate(`/orders`);
+                                            }
+                                          }} 
+                                          className="text-[11px] font-semibold text-primary-400 hover:text-primary-300 transition-colors flex items-center gap-1"
+                                        >
+                                          View details
+                                        </button>
+                                      )}
+                                      {n.type === 'delivery_assigned' && n.data?.delivery_id && (
+                                        <div className="flex-1">{renderDeliveryAction(n)}</div>
+                                      )}
+                                      {isUnread && (
+                                        <button 
+                                          onClick={async () => { await markRead(n.id); }} 
+                                          className="text-[11px] font-medium text-gray-500 hover:text-white transition-colors ml-auto opacity-0 group-hover:opacity-100"
+                                        >
+                                          Mark read
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="p-3 bg-white/5 border-t border-white/5 text-center">
+                      <button 
+                        onClick={() => { setNotifOpen(false); navigate(user?.role === 'customer' ? '/profile' : '/orders'); }}
+                        className="text-[11px] text-gray-400 hover:text-white transition-colors"
+                      >
+                        See all activity
+                      </button>
                     </div>
                   </div>
                 )}
@@ -373,7 +559,7 @@ export default function Navbar() {
             )}
             
             {user?.role === 'customer' || !user ? (
-              <Link to="/cart" className="text-gray-300 hover:text-primary-400 transition relative group flex items-center">
+              <Link to="/cart" id="navbar-cart-icon" className="text-gray-300 hover:text-primary-400 transition relative group flex items-center">
                 <div className="w-14 flex items-center justify-center relative">
                   <span className="inline-flex items-center justify-center transition-all duration-200 transform group-hover:opacity-0 group-hover:scale-75 text-gray-300 group-hover:text-primary-400 transition-colors duration-200">
                     <ShoppingCart className="w-5 h-5" />

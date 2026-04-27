@@ -18,7 +18,8 @@ export default function Catalog() {
     category_id: searchParams.get('category_id') || '',
     brand_id: searchParams.get('brand_id') || '',
     gender: searchParams.get('gender') || '',
-    sort: searchParams.get('sort') || 'newest'
+    sort: searchParams.get('sort') || 'newest',
+    search: searchParams.get('search') || ''
   });
 
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -32,6 +33,16 @@ export default function Catalog() {
       setBrands(brs.data?.data || brs.data || []);
     }).catch(e => console.error(e));
   }, []);
+
+  // Sync search param from URL if it changes (e.g. from Navbar search form)
+  useEffect(() => {
+    const q = searchParams.get('search');
+    if (q !== filters.search && q !== null) {
+      setFilters(prev => ({ ...prev, search: q }));
+    } else if (!q && filters.search) {
+      setFilters(prev => ({ ...prev, search: '' }));
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -92,7 +103,7 @@ export default function Catalog() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div className="max-w-none mx-auto px-4 sm:px-6 lg:px-12 py-12">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-8 gap-4">
         <div>
           <h1 className="text-4xl font-serif text-white mb-2">Our Collection</h1>

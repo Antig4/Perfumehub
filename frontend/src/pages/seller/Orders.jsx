@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import api from '../../api/axios';
-import { Package, Search, ExternalLink, UserCheck } from 'lucide-react';
+import { Package, Search, ExternalLink, UserCheck, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 import Modal from '../../components/Modal';
@@ -77,7 +77,8 @@ export default function SellerOrders() {
 
     try {
       await api.put(`/seller/orders/${orderId}/status`, { status });
-      toast.success(`Order ${status}`);
+      const label = status === 'out_for_delivery' ? 'Ready to Pick-up' : status.replace(/_/g, ' ');
+      toast.success(`Order marked as ${label}`);
     } catch (e) {
       toast.error(e.response?.data?.message || 'Failed to update status');
       setOrders(prevList => prevList.map(o => o.id === orderId ? { ...o, status: prevStatus } : o));
@@ -123,7 +124,7 @@ export default function SellerOrders() {
     switch (status) {
       case 'pending': return 'Confirm';
       case 'confirmed': return 'Pack';
-      case 'packed': return 'Ship';
+      case 'packed': return 'Ready';
       default: return 'Quick';
     }
   };
@@ -131,7 +132,7 @@ export default function SellerOrders() {
   const clearNewBadge = () => setNewCount(0);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div className="max-w-none mx-auto px-4 sm:px-6 lg:px-12 py-12">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
         <div>
           <h1 className="text-3xl font-serif text-white">Manage Orders</h1>
@@ -143,7 +144,7 @@ export default function SellerOrders() {
             <option value="pending">Pending</option>
             <option value="confirmed">Confirmed</option>
             <option value="packed">Packed</option>
-            <option value="out_for_delivery">Out for Delivery</option>
+            <option value="out_for_delivery">Ready to Pick-up</option>
             <option value="delivered">Delivered</option>
             <option value="cancelled">Cancelled</option>
           </select>
@@ -226,7 +227,7 @@ export default function SellerOrders() {
                               {/* Show read-only states if order is already past packed */}
                               {['out_for_delivery','delivered','cancelled'].includes(order.status) && (
                                 <option value={order.status} disabled>
-                                  {order.status === 'out_for_delivery' ? 'Out for Delivery' :
+                                  {order.status === 'out_for_delivery' ? 'Ready to Pick-up' :
                                    order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                                 </option>
                               )}
@@ -235,9 +236,9 @@ export default function SellerOrders() {
                               <button
                                 onClick={quickAction(order)}
                                 disabled={!!updating[order.id]}
-                                className="btn-primary py-1 px-3 text-sm"
+                                className="btn-primary py-1 px-3 text-sm min-w-[80px] flex items-center justify-center"
                               >
-                                {updating[order.id] ? '...' : quickLabel(order.status)}
+                                {updating[order.id] ? <Loader2 className="w-4 h-4 animate-spin" /> : quickLabel(order.status)}
                               </button>
                             )}
                           </>
@@ -271,9 +272,9 @@ export default function SellerOrders() {
                         <button
                           onClick={() => updateStatus(order.id, 'cancelled')}
                           disabled={!!updating[order.id] || ['delivered','cancelled'].includes(order.status)}
-                          className="inline-flex p-2 text-red-400 hover:text-white transition bg-red-500/10 rounded-md disabled:opacity-40"
+                          className="inline-flex p-2 text-red-400 hover:text-white transition bg-red-500/10 rounded-md disabled:opacity-40 min-w-[70px] justify-center"
                         >
-                          {updating[order.id] ? '...' : 'Cancel'}
+                          {updating[order.id] ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Cancel'}
                         </button>
                       </div>
                     </td>

@@ -7,6 +7,7 @@ import { useAuthStore } from '../stores/authStore';
 import MapPicker from '../components/MapPicker';
 import MapViewer from '../components/MapViewer';
 import Modal from '../components/Modal';
+import GCashModal from '../components/GCashModal';
 
 export default function Checkout() {
   const navigate = useNavigate();
@@ -29,6 +30,7 @@ export default function Checkout() {
   
   // Payment Modal State
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [gcashModalOpen, setGcashModalOpen] = useState(false);
   const [mockPaymentStatus, setMockPaymentStatus] = useState('idle'); // idle, processing, success
   const [paymentInput, setPaymentInput] = useState('');
 
@@ -55,7 +57,11 @@ export default function Checkout() {
 
   const handleCreateOrder = async (e) => {
     e.preventDefault();
-    if (formData.payment_method !== 'cod') {
+    if (formData.payment_method === 'gcash') {
+      setGcashModalOpen(true);
+      return;
+    }
+    if (formData.payment_method === 'card') {
       setPaymentModalOpen(true);
       setMockPaymentStatus('idle');
       setPaymentInput('');
@@ -237,12 +243,7 @@ export default function Checkout() {
           <form onSubmit={handleMockPayment} className="space-y-4">
             <p className="text-sm text-gray-400 mb-4">You are about to pay <span className="text-primary-400 font-bold">₱{total.toLocaleString()}</span>. This is a sandbox environment.</p>
             
-            {formData.payment_method === 'gcash' ? (
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-1">GCash Mobile Number</label>
-                <input type="text" required placeholder="09XX XXX XXXX" value={paymentInput} onChange={e => setPaymentInput(e.target.value)} className="input-field" />
-              </div>
-            ) : (
+            {formData.payment_method === 'card' && (
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-1">Card Number</label>
                 <input type="text" required placeholder="XXXX XXXX XXXX XXXX" value={paymentInput} onChange={e => setPaymentInput(e.target.value)} className="input-field" />
@@ -282,6 +283,17 @@ export default function Checkout() {
           </div>
         )}
       </Modal>
+
+      {/* GCash Custom Flow Modal */}
+      <GCashModal 
+        open={gcashModalOpen} 
+        onClose={() => setGcashModalOpen(false)} 
+        onSuccess={() => {
+          setGcashModalOpen(false);
+          processFinalOrder();
+        }}
+        amount={total} 
+      />
 
     </div>
   );

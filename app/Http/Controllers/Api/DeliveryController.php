@@ -95,7 +95,7 @@ class DeliveryController extends Controller
 
         // Sync order status
         $orderStatusMap = [
-            'picked_up'        => 'packed',
+            'picked_up'        => 'out_for_delivery',
             'out_for_delivery' => 'out_for_delivery',
             'delivered'        => 'delivered',
         ];
@@ -103,11 +103,17 @@ class DeliveryController extends Controller
         if (isset($orderStatusMap[$request->status])) {
             $delivery->order->update(['status' => $orderStatusMap[$request->status]]);
 
+            $profMessage = "Your order #{$delivery->order->order_number} is now: " . ucfirst(str_replace('_', ' ', $request->status)) . ".";
+            
+            if ($request->status === 'picked_up') {
+                $profMessage = "Great news! Your order #{$delivery->order->order_number} has been picked up by our rider.";
+            }
+
             Notification::create([
                 'user_id' => $delivery->order->user_id,
                 'type'    => 'delivery_update',
                 'title'   => 'Delivery Update',
-                'message' => "Your order #{$delivery->order->order_number} is now: {$request->status}.",
+                'message' => $profMessage,
                 'data'    => ['order_id' => $delivery->order_id],
             ]);
         }

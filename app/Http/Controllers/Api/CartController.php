@@ -67,7 +67,10 @@ class CartController extends Controller
 
     public function update(Request $request, CartItem $cartItem)
     {
-        $this->authorize('update', $cartItem);
+        if ($cartItem->cart->user_id !== $request->user()->id) {
+            return response()->json(['message' => 'This action is unauthorized.'], 403);
+        }
+
         $request->validate(['quantity' => 'required|integer|min:1']);
 
         if ($request->quantity > $cartItem->product->stock) {
@@ -78,8 +81,12 @@ class CartController extends Controller
         return response()->json(['message' => 'Cart updated.']);
     }
 
-    public function remove(CartItem $cartItem)
+    public function remove(Request $request, CartItem $cartItem)
     {
+        if ($cartItem->cart->user_id !== $request->user()->id) {
+            return response()->json(['message' => 'This action is unauthorized.'], 403);
+        }
+
         $cartItem->delete();
         return response()->json(['message' => 'Item removed from cart.']);
     }

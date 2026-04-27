@@ -37,11 +37,22 @@ class OrderController extends Controller
     public function show(Request $request, Order $order)
     {
         $user = $request->user();
+        
+        // Authorization check
         if ($user->isCustomer() && $order->user_id !== $user->id) {
             return response()->json(['message' => 'Unauthorized.'], 403);
         }
 
-        $order->load(['items.product.primaryImage', 'delivery.rider', 'payment', 'user', 'reviews']);
+        if ($user->isSeller()) {
+            $hasItems = $order->items()->where('seller_id', $user->id)->exists();
+            if (!$hasItems) {
+                return response()->json(['message' => 'Unauthorized. This order does not contain your products.'], 403);
+            }
+        }
+
+        // Load only necessary relationships for the detail page
+        $order->load(['items.product.primaryImage', 'delivery.rider', 'payment', 'user']);
+        
         return response()->json(['data' => $order]);
     }
 
@@ -157,9 +168,8 @@ class OrderController extends Controller
             $assignedRiderId = null;
 
             if ($primarySellerId) {
-                // Find an available rider assigned to this seller
-                $availableRider = \App\Models\RiderProfile::where('seller_id', $primarySellerId)
-                    ->where('is_available', true)
+                // Find any available rider (riders are global in this system)
+                $availableRider = \App\Models\RiderProfile::where('is_available', true)
                     ->first();
                 
                 if ($availableRider) {
@@ -213,6 +223,15 @@ class OrderController extends Controller
                     ]);
                 }
             }
+
+            // Notify customer that order was placed successfully
+            Notification::create([
+                'user_id' => $user->id,
+                'type'    => 'order_status',
+                'title'   => 'Order Placed Successfully',
+                'message' => "Your order #{$order->order_number} has been received and is now pending confirmation.",
+                'data'    => ['order_id' => $order->id],
+            ]);
 
             DB::commit();
 
@@ -282,27 +301,37 @@ class OrderController extends Controller
 
         $order->update(['status' => $request->status]);
 
-        // Notify customer
-        Notification::create([
-            'user_id' => $order->user_id,
-            'type'    => 'order_status',
-            'title'   => 'Order Update',
-            'message' => "Your order #{$order->order_number} is now: {$request->status}.",
-            'data'    => ['order_id' => $order->id],
-        ]);
+        $displayStatus = $request->status;
+        if ($displayStatus === 'out_for_delivery') {
+            $displayStatus = 'Ready to Pick-up';
+        } else {
+            $displayStatus = ucfirst($displayStatus);
+        }
 
-        // If seller confirmed/packed the order, notify the seller(s) and the customer
-        if (in_array($request->status, ['confirmed', 'packed'])) {
-            // Notify all sellers associated with this order
-            foreach ($order->items->groupBy('seller_id') as $sellerId => $items) {
+        // Notify customer (except for 'out_for_delivery' which is handled when the rider picks it up)
+        if ($request->status !== 'out_for_delivery') {
+            Notification::create([
+                'user_id' => $order->user_id,
+                'type'    => 'order_status',
+                'title'   => 'Order Update',
+                'message' => "Your order #{$order->order_number} is now: {$displayStatus}.",
+                'data'    => ['order_id' => $order->id],
+            ]);
+        }
+
+        // Handle notifications and auto-assignment
+        if (in_array($request->status, ['confirmed', 'packed', 'out_for_delivery'])) {
+            // If status is 'out_for_delivery' (Ready to Pick-up), notify the assigned rider
+            if ($request->status === 'out_for_delivery' && $order->delivery && $order->delivery->rider_id) {
                 Notification::create([
-                    'user_id' => $sellerId,
-                    'type'    => 'seller_order_update',
-                    'title'   => 'Order to Fulfill',
-                    'message' => "Order #{$order->order_number} has been marked {$request->status}. Please prepare the item(s) for fulfillment.",
-                    'data'    => ['order_id' => $order->id, 'items' => $items->map->only(['id','product_id','product_name','quantity'])->values()],
+                    'user_id' => $order->delivery->rider_id,
+                    'type'    => 'order_ready_for_pickup',
+                    'title'   => 'Order Ready for Pick-up',
+                    'message' => "Order #{$order->order_number} is now packed and ready for pick-up.",
+                    'data'    => ['order_id' => $order->id, 'delivery_id' => $order->delivery->id],
                 ]);
             }
+
             // If status is 'packed', try to auto-assign an available rider to the delivery
             if ($request->status === 'packed') {
                 $delivery = $order->delivery;
